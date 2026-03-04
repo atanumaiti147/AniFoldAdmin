@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Terminal | Secure Access</title>
+
+    <!-- 🛡️ HACK PROOF SECURITY SYSTEM -->
+    <script>
+        // 👇 YAHAN APNA DOMAIN LIKHO
+        const allowedDomain = "craftyam.anifold.shop"; 
+
+        const h = window.location.hostname;
+        // Localhost allowed for testing, otherwise Strict Domain Lock
+        if (!h.includes(allowedDomain) && h !== "localhost" && h !== "127.0.0.1") {
+            document.documentElement.innerHTML = ""; 
+            window.location.href = "about:blank"; 
+            throw new Error("ACCESS DENIED");
+        }
+
+        // 🛑 DISABLE INSPECT & RIGHT CLICK
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        document.onkeydown = function(e) {
+            if (e.keyCode == 123) return false; // F12
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; 
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false; 
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; 
+            if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; 
+        }
+
+        // 🛑 ANTI-DEBUGGER TRAP (Browser Freeze on Inspect)
+        setInterval(() => { 
+            const t = Date.now(); 
+            debugger; 
+            if (Date.now() - t > 100) window.location.href = "about:blank"; 
+        }, 1000);
+    </script>
+
+    <!-- 🔥 FIREBASE SDK 🔥 -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        :root { --bg: #09090b; --glass: rgba(255, 255, 255, 0.05); --border: rgba(255, 255, 255, 0.1); --primary: #00f3ff; --text: #e4e4e7; --danger: #ff2a6d; --warn: #ff9800; --success: #00e676; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', monospace; user-select: none; }
+        body { background: var(--bg); color: var(--text); padding-bottom: 80px; }
+        .hidden { display: none !important; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        
+        .card { background: var(--glass); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; backdrop-filter: blur(10px); }
+        input, textarea, select { width: 100%; background: #000; border: 1px solid #333; padding: 12px; color: var(--primary); margin-bottom: 10px; border-radius: 6px; outline: none; font-family: monospace; }
+        label { display: block; margin-top: 15px; font-size: 0.8rem; color: #aaa; margin-bottom: 5px; font-weight: bold; text-transform: uppercase; }
+
+        .btn { cursor: pointer; padding: 12px; border: none; border-radius: 6px; font-weight: bold; width: 100%; margin-top: 5px; transition: 0.2s; background: var(--primary); color: #000; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn:hover { transform: scale(1.02); box-shadow: 0 0 15px var(--primary); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warn { background: var(--warn); color: black; }
+        
+        .loader { border: 3px solid rgba(0, 0, 0, 0.1); border-top: 3px solid #000; border-radius: 50%; width: 18px; height: 18px; animation: spin 0.8s linear infinite; display: none; }
+        .btn.loading .loader { display: block; }
+        .btn.loading span { display: none; } 
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .nav-tabs { display: flex; gap: 10px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 5px; }
+        .tab-btn { background: #111; color: #666; flex: 1; border: 1px solid #333; padding: 10px; cursor: pointer; white-space: nowrap; border-radius: 4px; }
+        .tab-btn.active { background: var(--glass); color: var(--primary); border-color: var(--primary); }
+
+        .list-item { background: rgba(255,255,255,0.02); padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; border: 1px solid #333; }
+        .img-preview { width: 60px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid #333; display: none; margin-top: 5px; }
+        .upload-box { border: 1px dashed #444; padding: 10px; text-align: center; margin-bottom: 10px; cursor: pointer; color: #888; border-radius: 6px; transition: 0.2s; }
+        .upload-box:hover { border-color: var(--primary); color: var(--primary); }
+        
+        .image-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+        .image-wrapper { position: relative; width: 60px; height: 60px; border: 1px solid #333; border-radius: 4px; }
+        .image-thumb { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+        .remove-img { position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        .user-email { font-weight: bold; font-size: 0.9rem; color: #fff; }
+        .user-details { font-size: 0.8rem; color: #aaa; margin-top: 2px; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .coup-meta { font-size: 0.75rem; color: #888; margin-top: 4px; line-height: 1.4; }
+        .action-row { display: flex; gap: 5px; }
+
+        /* TOAST */
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px; }
+        .toast { min-width: 250px; padding: 15px 20px; border-radius: 8px; color: white; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.3); animation: slideIn 0.3s ease-out; display: flex; align-items: center; gap: 10px; font-size: 0.9rem; }
+        .toast.success { background: linear-gradient(45deg, #00e676, #00c853); border-left: 5px solid #00600f; }
+        .toast.error { background: linear-gradient(45deg, #ff5252, #d50000); border-left: 5px solid #8a0000; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+    </style>
+</head>
+<body>
+
+    <div id="toast-container"></div>
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" style="height:100vh; display:flex; align-items:center; justify-content:center;">
+        <div class="card" style="width:350px; text-align:center;">
+            <h2 style="color:var(--primary); margin-bottom:20px;">ADMIN LOGIN</h2>
+            <input type="email" id="login-email" placeholder="Admin ID">
+            <input type="password" id="login-password" placeholder="Passkey">
+            <button class="btn" id="btn-login" onclick="doLogin()"><span>AUTHENTICATE</span> <div class="loader"></div></button>
+        </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard" class="hidden container">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 style="color:var(--primary)">COMMAND CENTER</h3>
+            <button class="btn-danger" style="width:auto; padding:5px 15px; font-size:0.8rem;" onclick="doLogout()">EXIT</button>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="showTab('products')">PRODUCTS</button>
+            <button class="tab-btn" onclick="showTab('categories')">CATEGORIES</button>
+            <button class="tab-btn" onclick="showTab('users')">USERS</button>
+            <button class="tab-btn" onclick="showTab('orders')">ORDERS</button>
+            <button class="tab-btn" onclick="showTab('settings')">SETTINGS</button>
+            <button class="tab-btn" onclick="showTab('coupons')" style="color:#00ff00; border-color:#00ff00;">COUPONS</button>
+            <button class="tab-btn" style="color:var(--danger); border-color:var(--danger)" onclick="showTab('security')">SECURITY</button>
+        </div>
+
+        <!-- PRODUCTS TAB -->
+        <div id="tab-products">
+            <div class="card">
+                <h4>PRODUCT EDITOR</h4>
+                <input type="hidden" id="p-id">
+                <input type="text" id="p-title" placeholder="Product Title">
+                <select id="p-cat"><option value="">Select Category</option></select>
+                <label>Images (Max 15)</label>
+                <div class="image-grid" id="p-img-grid"></div>
+                <div class="upload-box" id="p-upload-btn" onclick="document.getElementById('p-file').click()">📸 ADD IMAGE</div>
+                <input type="file" id="p-file" hidden onchange="uploadProductImage(this)">
+                <div style="display:flex; gap:10px;">
+                    <input type="number" id="p-real" placeholder="Real Price">
+                    <input type="number" id="p-disc" placeholder="Disc Price">
+                </div>
+                <input type="text" id="p-dl" placeholder="Secret Download Link" style="border-color:#00ff00">
+                <textarea id="p-desc" rows="3" placeholder="Description"></textarea>
+                <button class="btn" id="btn-save-p" onclick="saveProduct()"><span>SAVE PRODUCT</span> <div class="loader"></div></button>
+                <button class="btn" style="background:#333; color:#fff; margin-top:5px;" onclick="clearP()">CLEAR FORM</button>
+            </div>
+            <div id="list-products"></div>
+        </div>
+
+        <!-- CATEGORIES TAB -->
+        <div id="tab-categories" class="hidden">
+            <div class="card">
+                <h4>CATEGORY EDITOR</h4>
+                <input type="hidden" id="c-id">
+                <input type="text" id="c-name" placeholder="Category Name">
+                <div class="upload-box" id="c-up-btn" onclick="document.getElementById('c-file').click()">📸 UPLOAD ICON</div>
+                <input type="file" id="c-file" hidden onchange="uploadImage(this, 'c-img', 'prev-c', 'c-up-btn')">
+                <input type="text" id="c-img" placeholder="Icon URL">
+                <img id="prev-c" class="img-preview">
+                <button class="btn" id="btn-save-c" onclick="saveCategory()"><span>SAVE</span> <div class="loader"></div></button>
+                <button class="btn" style="background:#333; margin-top:5px;" onclick="clearC()">CLEAR</button>
+            </div>
+            <div id="list-categories"></div>
+        </div>
+
+        <!-- USERS TAB -->
+        <div id="tab-users" class="hidden">
+            <div class="card">
+                <h4>USER DATABASE</h4>
+                <p style="font-size:0.8rem; color:#aaa;">Manage your customers.</p>
+            </div>
+            <div id="list-users"><p style="text-align:center;color:#666;">Loading users...</p></div>
+        </div>
+
+        <!-- ORDERS TAB -->
+        <div id="tab-orders" class="hidden"><div id="list-orders"></div></div>
+
+        <!-- SETTINGS TAB -->
+        <div id="tab-settings" class="hidden">
+            <div class="card" style="border-color: #00ff00;">
+                <h4 style="color:#00ff00">APP & PAYMENT</h4>
+                <label>Razorpay Key ID</label>
+                <input type="text" id="rzp-key" placeholder="rzp_live_...">
+                <label>Tax Settings</label>
+                <div style="display:flex; gap:5px;">
+                    <input type="number" id="s-tax-val" placeholder="Value (e.g. 1.89)" step="0.01" style="border-color:#ff9800;">
+                    <select id="s-tax-type" style="width:100px; border-color:#ff9800;"><option value="percent">Percent</option><option value="fixed">Fixed</option></select>
+                </div>
+                <button class="btn" onclick="saveMeta(this, 'payment')"><span>SAVE PAYMENT SETTINGS</span> <div class="loader"></div></button>
+                <label style="margin-top:20px;">App Link</label>
+                <input type="text" id="s-app-link" placeholder="APK URL">
+                <button class="btn" onclick="saveMeta(this, 'app')"><span>SAVE APP LINK</span> <div class="loader"></div></button>
+            </div>
+
+            <div class="card" style="border-color: #ff00de;">
+                <h4 style="color:#ff00de">EMAIL CONFIGURATION (EmailJS)</h4>
+                <label>Service ID</label><input type="text" id="ejs-service">
+                <label>Template ID</label><input type="text" id="ejs-template">
+                <label>Public Key</label><input type="text" id="ejs-key">
+                <button class="btn" onclick="saveMeta(this, 'emailjs')"><span>SAVE EMAIL CONFIG</span> <div class="loader"></div></button>
+            </div>
+
+            <div class="card">
+                <h4>IDENTITY</h4>
+                <input type="text" id="s-name" placeholder="Store Name">
+                <label>Header Logo</label><div class="upload-box" id="up-h" onclick="document.getElementById('f-h').click()">📸 Upload</div><input type="file" id="f-h" hidden onchange="uploadImage(this,'s-logo','prev-logo','up-h')"><input type="text" id="s-logo"><img id="prev-logo" class="img-preview">
+                <label>Footer Logo</label><div class="upload-box" id="up-f" onclick="document.getElementById('f-f').click()">📸 Upload</div><input type="file" id="f-f" hidden onchange="uploadImage(this,'s-footer','prev-footer','up-f')"><input type="text" id="s-footer"><img id="prev-footer" class="img-preview">
+                <label>Hero Image</label><div class="upload-box" id="up-hr" onclick="document.getElementById('f-hr').click()">📸 Upload</div><input type="file" id="f-hr" hidden onchange="uploadImage(this,'s-hero','prev-hero','up-hr')"><input type="text" id="s-hero"><img id="prev-hero" class="img-preview">
+                <label>Favicon</label><div class="upload-box" id="up-fav" onclick="document.getElementById('f-fav').click()">📸 Upload</div><input type="file" id="f-fav" hidden onchange="uploadImage(this,'s-fav','prev-fav','up-fav')"><input type="text" id="s-fav"><img id="prev-fav" class="img-preview">
+                <button class="btn" onclick="saveMeta(this, 'brand')"><span>UPDATE IDENTITY</span> <div class="loader"></div></button>
+            </div>
+
+            <div class="card">
+                <h4>CONTACT & POLICIES</h4>
+                <textarea id="con-msg" placeholder="Welcome Msg"></textarea>
+                <input type="text" id="s-wa" placeholder="WhatsApp">
+                <input type="text" id="s-email" placeholder="Email">
+                <input type="text" id="s-hours" placeholder="Operating Hours">
+                <textarea id="s-add" placeholder="Address"></textarea>
+                <input type="text" id="s-insta" placeholder="Instagram URL">
+                <input type="text" id="s-yt" placeholder="YouTube URL">
+                <button class="btn" onclick="saveMeta(this, 'contact')"><span>SAVE DETAILS</span> <div class="loader"></div></button>
+                <label style="margin-top:20px;">Policies</label>
+                <textarea id="pol-terms" rows="2" placeholder="Terms"></textarea>
+                <textarea id="pol-privacy" rows="2" placeholder="Privacy"></textarea>
+                <textarea id="pol-refund" rows="2" placeholder="Refund"></textarea>
+                <textarea id="pol-about" rows="2" placeholder="About"></textarea>
+                <button class="btn" onclick="saveMeta(this, 'policies')"><span>SAVE POLICIES</span> <div class="loader"></div></button>
+            </div>
+        </div>
+        
+        <!-- COUPONS TAB -->
+        <div id="tab-coupons" class="hidden">
+            <div class="card" style="border-color:#00ff00;">
+                <h4 style="color:#00ff00;" id="coupon-form-title">CREATE COUPON</h4>
+                <input type="hidden" id="old-coup-code">
+                <label>Code & Value</label>
+                <div class="grid-2">
+                    <input type="text" id="coup-code" placeholder="CODE" style="text-transform:uppercase;">
+                    <div style="display:flex; gap:5px;">
+                        <input type="number" id="coup-val" placeholder="Value">
+                        <select id="coup-type" style="width:80px;"><option value="percent">%</option><option value="fixed">₹</option></select>
+                    </div>
+                </div>
+                <label>Validity (Start - End)</label>
+                <div class="grid-2">
+                    <input type="datetime-local" id="coup-start" style="color:#aaa;">
+                    <input type="datetime-local" id="coup-end" style="color:#aaa;">
+                </div>
+                <label>Usage Limits</label>
+                <div class="grid-2">
+                    <input type="number" id="coup-limit-user" placeholder="Max uses per user">
+                    <input type="number" id="coup-limit-total" placeholder="Total global usage limit">
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn" id="btn-save-coup" onclick="saveCoupon()"><span>SAVE COUPON</span> <div class="loader"></div></button>
+                    <button class="btn btn-warn hidden" id="btn-cancel-coup" onclick="resetCouponForm()">CANCEL</button>
+                </div>
+            </div>
+            <h4 style="margin-bottom:10px; color:#aaa;">ACTIVE COUPONS</h4>
+            <div id="list-coupons" style="padding-bottom:50px;"><p style="text-align:center; color:#666;">Loading coupons...</p></div>
+        </div>
+
+        <!-- SECURITY LOGS TAB -->
+        <div id="tab-security" class="hidden">
+             <div class="card" style="border-color:#ff3366;"><h4 style="color:#ff3366;">INTRUSION LOGS</h4><button class="btn btn-danger" onclick="clearLogs()">CLEAR LOGS</button></div><div id="list-security"></div>
+        </div>
+    </div>
+
+    <script>
+        // <!-- PASTE YOUR FIREBASE CONFIG HERE -->
+        const firebaseConfig = {
+          apiKey: "AIzaSyAXfqKMmJ5pzO9i0V5h0HfXaDr3rII5ojM",
+          authDomain: "anifold-dp.firebaseapp.com",
+          databaseURL: "https://anifold-dp-default-rtdb.firebaseio.com",
+          projectId: "anifold-dp",
+          storageBucket: "anifold-dp.firebasestorage.app",
+          messagingSenderId: "555175386696",
+          appId: "1:555175386696:web:5d837cf1777f9fc01f827d"
+        };
+        // <!-- END CONFIG -->
+
+        let app, auth, db;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.database();
+        } catch(e) { console.error(e); }
+        
+        const IMGBB_KEY = "f42d3a55ec157019f59f8637336fa6e6";
+        let currentProductImages = []; 
+
+        window.showToast = (msg, type) => {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${type === 'success' ? '✔' : '✖'}</span> ${msg}`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.animation = 'fadeOut 0.3s forwards'; setTimeout(() => toast.remove(), 300); }, 3000);
+        };
+
+        const toggleLoading = (btnId, isLoading) => {
+            const btn = document.getElementById(btnId);
+            if(btn) { if(isLoading) { btn.classList.add('loading'); btn.disabled = true; } else { btn.classList.remove('loading'); btn.disabled = false; } }
+        };
+
+        window.doLogin = () => {
+            toggleLoading('btn-login', true);
+            auth.signInWithEmailAndPassword(document.getElementById('login-email').value, document.getElementById('login-password').value)
+                .catch(e => { showToast(e.message, 'error'); toggleLoading('btn-login', false); });
+        };
+        window.doLogout = () => auth.signOut().then(()=>location.reload());
+
+        auth.onAuthStateChanged(u => {
+            if(u) { document.getElementById('login-screen').classList.add('hidden'); document.getElementById('dashboard').classList.remove('hidden'); initData(); }
+            else { document.getElementById('login-screen').classList.remove('hidden'); document.getElementById('dashboard').classList.add('hidden'); }
+        });
+
+        window.showTab = (t) => {
+            ['products','categories','orders','settings','users','security','coupons'].forEach(x => document.getElementById('tab-'+x).classList.add('hidden'));
+            document.getElementById('tab-'+t).classList.remove('hidden');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+        };
+
+        window.uploadImage = async (input, urlId, prevId, boxId) => {
+            if(!input.files[0]) return;
+            const box = document.getElementById(boxId); const oldTxt = box.innerText; box.innerText = "⏳...";
+            const f = new FormData(); f.append("image", input.files[0]);
+            try {
+                const req = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {method:'POST', body:f});
+                const res = await req.json();
+                if(res.success) {
+                    document.getElementById(urlId).value = res.data.url;
+                    document.getElementById(prevId).src = res.data.url;
+                    document.getElementById(prevId).style.display = 'block';
+                    box.innerText = "✅"; showToast("Image Uploaded!", "success");
+                }
+            } catch(e) { showToast("Upload Failed", "error"); }
+            setTimeout(() => box.innerText = oldTxt, 2000);
+        };
+
+        window.uploadProductImage = async (input) => {
+            if(!input.files[0]) return;
+            if(currentProductImages.length >= 15) { showToast("Max 15 Images!", "error"); return; }
+            const box = document.getElementById('p-upload-btn'); const oldTxt = box.innerText; box.innerText = "⏳...";
+            const f = new FormData(); f.append("image", input.files[0]);
+            try {
+                const req = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {method:'POST', body:f});
+                const res = await req.json();
+                if(res.success) {
+                    currentProductImages.push(res.data.url);
+                    renderProductPreviews();
+                    box.innerText = "✅ Added"; showToast("Image Added", "success");
+                }
+            } catch(e) { showToast("Upload Failed", "error"); }
+            setTimeout(() => box.innerText = oldTxt, 2000);
+        };
+
+        function renderProductPreviews() {
+            const grid = document.getElementById('p-img-grid'); grid.innerHTML = '';
+            currentProductImages.forEach((url, idx) => {
+                grid.innerHTML += `<div class="image-wrapper"><img src="${url}" class="image-thumb"><span class="remove-img" onclick="removeProductImg(${idx})">x</span></div>`;
+            });
+        }
+        window.removeProductImg = (idx) => { currentProductImages.splice(idx, 1); renderProductPreviews(); };
+
+        window.saveProduct = () => {
+            const id = document.getElementById('p-id').value;
+            const dl = document.getElementById('p-dl').value;
+            if(currentProductImages.length === 0) { showToast("Upload at least one image", "error"); return; }
+            const d = {
+                title: document.getElementById('p-title').value,
+                category: document.getElementById('p-cat').value,
+                images: currentProductImages,
+                imageUrl: currentProductImages[0],
+                realPrice: document.getElementById('p-real').value,
+                discountedPrice: document.getElementById('p-disc').value,
+                description: document.getElementById('p-desc').value
+            };
+            toggleLoading('btn-save-p', true);
+            const ref = id ? db.ref('products/'+id) : db.ref('products').push();
+            ref.update(d).then(() => {
+                if(dl) db.ref('secure_links/' + ref.key).update({ link: dl });
+                showToast("Product Saved!", "success"); clearP();
+            }).catch(e => showToast(e.message, "error")).finally(() => toggleLoading('btn-save-p', false));
+        };
+        window.delProd = (id) => { if(confirm('Delete?')) db.ref('products/'+id).remove().then(()=>showToast("Product Deleted", "success")); };
+        
+        window.editProd = (id) => {
+            db.ref('products/'+id).once('value').then(s => {
+                const v = s.val();
+                document.getElementById('p-id').value = id;
+                document.getElementById('p-title').value = v.title;
+                currentProductImages = v.images || (v.imageUrl ? [v.imageUrl] : []);
+                renderProductPreviews();
+                document.getElementById('p-real').value = v.realPrice;
+                document.getElementById('p-disc').value = v.discountedPrice;
+                document.getElementById('p-desc').value = v.description || '';
+                document.getElementById('p-cat').value = v.category;
+                db.ref('secure_links/'+id).once('value').then(sl => {
+                    if(sl.exists()) document.getElementById('p-dl').value = sl.val().link || '';
+                });
+                showTab('products');
+            });
+        };
+        window.clearP = () => { document.querySelectorAll('#tab-products input, textarea').forEach(i => i.value=''); currentProductImages=[]; renderProductPreviews(); document.getElementById('p-id').value=''; };
+
+        window.saveCategory = (btn) => { const id = document.getElementById('c-id').value; const d = {name:document.getElementById('c-name').value, image:document.getElementById('c-img').value}; toggleLoading('btn-save-c', true); const ref = id ? db.ref('categories/'+id) : db.ref('categories').push(); ref.update(d).then(()=>{showToast("Category Saved!", "success"); clearC();}).finally(()=>toggleLoading('btn-save-c', false)); };
+        window.delCat = (id) => { if(confirm('Delete?')) db.ref('categories/'+id).remove().then(()=>showToast("Category Deleted", "success")); };
+        window.editCat = (id) => { db.ref('categories/'+id).once('value').then(s=>{ const v = s.val(); document.getElementById('c-id').value=id; document.getElementById('c-name').value=v.name; document.getElementById('c-img').value=v.image; document.getElementById('prev-c').src=v.image; document.getElementById('prev-c').style.display='block'; showTab('categories'); }); };
+        window.clearC = () => { document.getElementById('c-id').value=''; document.getElementById('c-name').value=''; document.getElementById('c-img').value=''; document.getElementById('prev-c').style.display='none'; };
+
+        window.saveMeta = (btn, type) => {
+            btn.innerText = "Saving..."; btn.disabled = true;
+            let d = {};
+            if(type==='brand') d = { name: document.getElementById('s-name').value, headerLogoUrl: document.getElementById('s-logo').value, heroImageUrl: document.getElementById('s-hero').value, footerLogoUrl: document.getElementById('s-footer').value, faviconUrl: document.getElementById('s-fav').value };
+            else if(type==='contact') d = { message: document.getElementById('con-msg').value, whatsapp: document.getElementById('s-wa').value, email: document.getElementById('s-email').value, hours: document.getElementById('s-hours').value, address: document.getElementById('s-add').value, instagram: document.getElementById('s-insta').value, youtube: document.getElementById('s-yt').value };
+            else if(type==='policies') d = { terms: document.getElementById('pol-terms').value, privacy: document.getElementById('pol-privacy').value, refund: document.getElementById('pol-refund').value, about: document.getElementById('pol-about').value };
+            else if(type==='app') d = { url: document.getElementById('s-app-link').value };
+            else if(type==='payment') d = { keyId: document.getElementById('rzp-key').value, taxValue: document.getElementById('s-tax-val').value, taxType: document.getElementById('s-tax-type').value };
+            else if(type==='emailjs') d = { serviceId: document.getElementById('ejs-service').value, templateId: document.getElementById('ejs-template').value, publicKey: document.getElementById('ejs-key').value };
+            db.ref('meta/'+type).update(d).then(()=>{ showToast("Settings Updated!", "success"); btn.innerHTML="<span>SAVE</span>"; btn.disabled=false; }).catch(e => { showToast(e.message, "error"); btn.innerHTML="<span>SAVE</span>"; btn.disabled=false; });
+        };
+
+        window.saveCoupon = () => {
+            let code = document.getElementById('coup-code').value.toUpperCase().trim();
+            code = code.replace(/[^A-Z0-9]/g, '');
+            const val = document.getElementById('coup-val').value;
+            const type = document.getElementById('coup-type').value;
+            const start = document.getElementById('coup-start').value;
+            const end = document.getElementById('coup-end').value;
+            const limitUserRaw = document.getElementById('coup-limit-user').value;
+            const limitTotalRaw = document.getElementById('coup-limit-total').value;
+            const limitPerUser = (limitUserRaw && !isNaN(limitUserRaw)) ? parseInt(limitUserRaw) : 0;
+            const limitTotal = (limitTotalRaw && !isNaN(limitTotalRaw)) ? parseInt(limitTotalRaw) : 0;
+            const oldCode = document.getElementById('old-coup-code').value;
+
+            if(!code || !val) { showToast("Code & Value Required", "error"); return; }
+            toggleLoading('btn-save-coup', true);
+
+            const couponData = {
+                code: code,
+                discount: parseInt(val),
+                type: type,
+                startTime: start ? Date.parse(start) : 0,
+                endTime: end ? Date.parse(end) : 0,
+                limitPerUser: limitPerUser,
+                limitTotal: limitTotal,
+            };
+
+            if(oldCode && oldCode !== code) { db.ref('coupons/' + oldCode).remove(); }
+
+            db.ref('coupons/' + code).set(couponData).then(() => { showToast("Coupon Saved!", "success"); resetCouponForm(); }).catch(e => showToast(e.message, "error")).finally(() => toggleLoading('btn-save-coup', false));
+        };
+
+        window.editCoupon = (code) => {
+            db.ref('coupons/' + code).once('value').then(snapshot => {
+                const v = snapshot.val();
+                if(v) {
+                    document.getElementById('old-coup-code').value = code;
+                    document.getElementById('coup-code').value = v.code;
+                    document.getElementById('coup-val').value = v.discount;
+                    document.getElementById('coup-type').value = v.type || 'percent';
+                    if(v.startTime) document.getElementById('coup-start').value = new Date(v.startTime - (new Date()).getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                    if(v.endTime) document.getElementById('coup-end').value = new Date(v.endTime - (new Date()).getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                    document.getElementById('coup-limit-user').value = v.limitPerUser || '';
+                    document.getElementById('coup-limit-total').value = v.limitTotal || '';
+                    document.getElementById('coupon-form-title').innerText = "EDIT COUPON: " + code;
+                    document.querySelector('#btn-save-coup span').innerText = "UPDATE COUPON";
+                    document.getElementById('btn-cancel-coup').classList.remove('hidden');
+                    document.querySelector('#tab-coupons').scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        };
+
+        window.resetCouponForm = () => {
+            document.querySelectorAll('#tab-coupons input').forEach(i => i.value = '');
+            document.getElementById('coupon-form-title').innerText = "CREATE COUPON";
+            document.querySelector('#btn-save-coup span').innerText = "SAVE COUPON";
+            document.getElementById('btn-cancel-coup').classList.add('hidden');
+            document.getElementById('old-coup-code').value = '';
+        };
+
+        window.delCoupon = (code) => { 
+            if(confirm("Delete coupon " + code + "?")) {
+                db.ref('coupons/' + code).remove().then(()=>showToast("Coupon Deleted", "success"));
+                if(document.getElementById('old-coup-code').value === code) resetCouponForm();
+            } 
+        };
+
+        window.resetUserPass = (email) => { if(confirm("Send Reset Email?")) auth.sendPasswordResetEmail(email).then(()=>showToast("Reset Email Sent", "success")); };
+        window.deleteUserData = (uid) => { if(confirm("Delete Data?")) db.ref('users/'+uid).remove().then(()=>showToast("User Deleted", "success")); };
+        window.clearLogs = () => { if(confirm("Clear Logs?")) db.ref('security_logs').remove().then(()=>showToast("Logs Cleared", "success")); };
+
+        function initData() {
+            db.ref('products').on('value', s => { const l = document.getElementById('list-products'); l.innerHTML=''; s.forEach(c => { const p=c.val(); l.innerHTML+=`<div class="list-item"><b>${p.title}</b> <div><button class="btn" style="width:auto;padding:5px" onclick="editProd('${c.key}')">Edit</button> <button class="btn btn-danger" style="width:auto;padding:5px" onclick="delProd('${c.key}')">X</button></div></div>`; }); });
+            db.ref('categories').on('value', s => { const l = document.getElementById('list-categories'); const sel = document.getElementById('p-cat'); l.innerHTML=''; sel.innerHTML='<option value="">Select Category</option>'; s.forEach(c => { const v=c.val(); l.innerHTML+=`<div class="list-item"><b>${v.name}</b> <div><button class="btn" style="width:auto;padding:5px" onclick="editCat('${c.key}')">Edit</button> <button class="btn btn-danger" style="width:auto;padding:5px" onclick="delCat('${c.key}')">X</button></div></div>`; sel.innerHTML += `<option value="${v.name}">${v.name}</option>`; }); });
+            db.ref('orders').on('value', s => { const l = document.getElementById('list-orders'); l.innerHTML=''; s.forEach(c => { const o = c.val(); l.innerHTML += `<div class="list-item" style="flex-direction:column;align-items:start"><div style="color:var(--primary)">${o.item || o.productSnapshot?.title}</div><small>${o.email} | ${new Date(o.date || o.createdAt).toLocaleDateString()}</small></div>`; }); });
+            db.ref('users').on('value', s => {
+                 const l = document.getElementById('list-users'); l.innerHTML='';
+                 if(!s.exists()) { l.innerHTML="<p style='text-align:center;color:#666'>No users found.</p>"; return; }
+                 s.forEach(c => { 
+                    const u=c.val(); 
+                    const name = u.firstName ? `${u.firstName} ${u.lastName}` : "No Name";
+                    const mobile = u.mobile ? `${u.countryCode||''}${u.mobile}` : "No Mobile";
+                    l.innerHTML+=`<div class="list-item" style="flex-direction:column;align-items:start"><div class="user-email">${u.email}</div><div class="user-details">👤 ${name} | 📞 ${mobile}</div><div style="font-size:0.7rem;color:#666;margin-bottom:5px;">ID: ${c.key}</div><div style="display:flex;gap:5px;width:100%;"><button class="btn btn-warn" style="width:auto;padding:5px;font-size:0.7rem" onclick="resetUserPass('${u.email}')">Reset Pass</button><button class="btn btn-danger" style="width:auto;padding:5px;font-size:0.7rem" onclick="deleteUserData('${c.key}')">Del</button></div></div>`; 
+                 });
+            });
+            db.ref('security_logs').limitToLast(20).on('value', s => { const l = document.getElementById('list-security'); l.innerHTML=''; const logs=[]; s.forEach(c=>logs.push(c.val())); logs.reverse().forEach(log => { l.innerHTML+=`<div class="list-item" style="display:block;border-left:3px solid red;"><div><strong style="color:#ff3366">⚠️ ${log.error||'Alert'}</strong><br>${log.email||'Unknown'}</div><div style="font-size:0.7rem;color:#aaa">${log.location} | ${new Date(log.timestamp).toLocaleString()}</div></div>`; }); });
+            
+            db.ref('coupons').on('value', s => {
+                const l = document.getElementById('list-coupons'); 
+                l.innerHTML = ''; 
+                if(s.exists()) {
+                    s.forEach(c => {
+                        const v = c.val();
+                        const discDisplay = v.type === 'fixed' ? `₹${v.discount}` : `${v.discount}%`;
+                        const limitDisplay = v.limitTotal ? `Limit: ${v.usedCount || 0}/${v.limitTotal}` : 'No Limit';
+                        const expiry = v.endTime ? new Date(v.endTime).toLocaleDateString() : 'Never';
+                        l.innerHTML += `
+                            <div class="list-item">
+                                <div>
+                                    <b style="color:var(--primary); font-size:1.1rem;">${v.code}</b> <span style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:0.8rem; font-weight:bold;">${discDisplay} OFF</span>
+                                    <div class="coup-meta">User: ${v.limitPerUser || '∞'} | Global: ${limitDisplay} | End: ${expiry}</div>
+                                </div>
+                                <div class="action-row">
+                                    <button class="btn" style="width:auto;padding:8px 12px;margin:0" onclick="editCoupon('${c.key}')">✏️</button>
+                                    <button class="btn btn-danger" style="width:auto;padding:8px 12px;margin:0" onclick="delCoupon('${c.key}')">🗑️</button>
+                                </div>
+                            </div>`;
+                    });
+                } else { l.innerHTML = '<p style="color:#666; text-align:center; padding:20px;">No active coupons.</p>'; }
+            });
+
+            db.ref('meta').once('value').then(s => { const v = s.val(); 
+                if(v?.payment) { document.getElementById('rzp-key').value = v.payment.keyId || ''; document.getElementById('s-tax-val').value = v.payment.taxValue || ''; document.getElementById('s-tax-type').value = v.payment.taxType || 'percent'; } 
+                if(v?.emailjs) { document.getElementById('ejs-service').value = v.emailjs.serviceId || ''; document.getElementById('ejs-template').value = v.emailjs.templateId || ''; document.getElementById('ejs-key').value = v.emailjs.publicKey || ''; }
+                if(v?.app) document.getElementById('s-app-link').value = v.app.url || ''; 
+                if(v?.brand) { document.getElementById('s-name').value = v.brand.name || ''; document.getElementById('s-logo').value = v.brand.headerLogoUrl || ''; document.getElementById('prev-logo').src=v.brand.headerLogoUrl||''; document.getElementById('s-hero').value = v.brand.heroImageUrl || ''; document.getElementById('prev-hero').src=v.brand.heroImageUrl||''; document.getElementById('s-footer').value = v.brand.footerLogoUrl || ''; document.getElementById('prev-footer').src=v.brand.footerLogoUrl||''; } 
+                if(v?.contact) { document.getElementById('con-msg').value = v.contact.message||''; document.getElementById('s-wa').value = v.contact.whatsapp||''; document.getElementById('s-email').value = v.contact.email||''; document.getElementById('s-hours').value = v.contact.hours||''; document.getElementById('s-add').value = v.contact.address||''; document.getElementById('s-insta').value = v.contact.instagram||''; document.getElementById('s-yt').value = v.contact.youtube||''; } 
+                if(v?.policies) { document.getElementById('pol-terms').value=v.policies.terms||''; document.getElementById('pol-privacy').value=v.policies.privacy||''; document.getElementById('pol-refund').value=v.policies.refund||''; document.getElementById('pol-about').value=v.policies.about||''; } 
+            });
+        }
+    </script>
+</body>
+</html>
