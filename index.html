@@ -3,93 +3,168 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AniFold Admin</title>
+<title>AniFold Admin Panel</title>
 <script>
-const allowedDomain = "craftyam.anifold.shop";
+// Domain lock — only craftyam.anifold.shop
 const h = window.location.hostname;
-if (!h.includes(allowedDomain) && h !== "localhost" && h !== "127.0.0.1") {
-  document.documentElement.innerHTML = "";
-  window.location.href = "about:blank";
-  throw new Error("ACCESS DENIED");
+if (h !== "craftyam.anifold.shop" && h !== "localhost" && h !== "127.0.0.1") {
+  document.documentElement.innerHTML = ""; window.location.href = "about:blank"; throw new Error("DENIED");
 }
 document.addEventListener('contextmenu', e => e.preventDefault());
-document.onkeydown = function(e) {
-  if (e.ctrlKey && e.shiftKey && e.keyCode == 73) return false;
-  if (e.ctrlKey && e.shiftKey && e.keyCode == 67) return false;
-  if (e.ctrlKey && e.shiftKey && e.keyCode == 74) return false;
-  if (e.ctrlKey && e.keyCode == 85) return false;
-}
+document.onkeydown = e => {
+  if (e.ctrlKey && e.shiftKey && [73,67,74].includes(e.keyCode)) return false;
+  if (e.ctrlKey && e.keyCode === 85) return false;
+};
 </script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <style>
-:root {
-  --bg: #09090b; --glass: rgba(255,255,255,0.05); --border: rgba(255,255,255,0.1);
-  --primary: #00f3ff; --text: #e4e4e7; --danger: #ff2a6d; --warn: #ff9800; --success: #00e676;
+/* ===== RESET & VARIABLES ===== */
+:root{
+  --bg:#09090b; --surface:#111113; --surface2:rgba(255,255,255,0.04);
+  --border:rgba(255,255,255,0.08); --border2:rgba(255,255,255,0.14);
+  --primary:#00f3ff; --primary-dim:rgba(0,243,255,0.12);
+  --green:#00e676; --danger:#ff2a6d; --warn:#ff9800; --purple:#a855f7;
+  --text:#e4e4e7; --muted:#71717a; --radius:10px;
 }
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', monospace; user-select: none; }
-body { background: var(--bg); color: var(--text); padding-bottom: 80px; }
-.hidden { display: none !important; }
-.container { max-width: 900px; margin: 0 auto; padding: 20px; }
-.card { background: var(--glass); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-input, textarea, select { width: 100%; background: #000; border: 1px solid #333; padding: 12px; color: var(--primary); margin-bottom: 10px; border-radius: 6px; outline: none; font-family: monospace; }
-label { display: block; margin-top: 15px; font-size: 0.8rem; color: #aaa; margin-bottom: 5px; font-weight: bold; text-transform: uppercase; }
-.btn { cursor: pointer; padding: 12px; border: none; border-radius: 6px; font-weight: bold; width: 100%; margin-top: 5px; transition: 0.2s; background: var(--primary); color: #000; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 10px; }
-.btn:hover { transform: scale(1.02); box-shadow: 0 0 15px var(--primary); }
-.btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
-.btn-danger { background: var(--danger); color: white; }
-.btn-warn { background: var(--warn); color: black; }
-.btn-sm { padding: 6px 14px; font-size: 0.75rem; width: auto; margin-top: 0; }
-.loader { border: 3px solid rgba(0,0,0,0.1); border-top: 3px solid #000; border-radius: 50%; width: 18px; height: 18px; animation: spin 0.8s linear infinite; display: none; }
-.btn.loading .loader { display: block; }
-.btn.loading span { display: none; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.nav-tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 5px; scrollbar-width: none; }
-.nav-tabs::-webkit-scrollbar { display: none; }
-.tab-btn { background: #111; color: #666; border: 1px solid #333; padding: 9px 10px; cursor: pointer; white-space: nowrap; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
-.tab-btn.active { color: var(--primary); border-color: var(--primary); background: rgba(0,243,255,0.05); }
-.list-item { background: rgba(255,255,255,0.02); padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; border: 1px solid #333; gap: 10px; }
-.img-preview { width: 60px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid #333; display: none; margin-top: 5px; }
-.upload-box { border: 1px dashed #444; padding: 12px; text-align: center; margin-bottom: 10px; cursor: pointer; color: #888; border-radius: 6px; transition: 0.2s; font-size: 0.9rem; }
-.upload-box:hover { border-color: var(--primary); color: var(--primary); }
-.image-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
-.image-wrapper { position: relative; width: 65px; height: 65px; border: 1px solid #333; border-radius: 4px; }
-.image-thumb { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
-.remove-img { position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.action-row { display: flex; gap: 5px; flex-wrap: wrap; }
-.stat-row { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; margin-bottom: 20px; }
-@media(min-width:500px){ .stat-row { grid-template-columns: repeat(4,1fr); } }
-.stat-box { background: var(--glass); border: 1px solid var(--border); border-radius: 10px; padding: 15px; text-align: center; }
-.stat-val { font-size: 1.8rem; font-weight: bold; color: var(--primary); }
-.stat-lbl { font-size: 0.7rem; color: #aaa; text-transform: uppercase; margin-top: 4px; }
-.badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
-.badge-pending { background: #ff9800; color: #000; }
-.badge-completed { background: #00e676; color: #000; }
-.badge-refunded { background: #ff2a6d; color: #fff; }
-.coup-meta { font-size: 0.75rem; color: #888; margin-top: 4px; }
-#error-msg { color: var(--danger); font-size: 0.85rem; margin-top: 10px; text-align: center; min-height: 20px; }
-#toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; max-width: 320px; }
-.toast { padding: 14px 18px; border-radius: 8px; color: white; font-weight: bold; box-shadow: 0 4px 12px rgba(0,0,0,0.4); animation: slideIn 0.3s ease; display: flex; align-items: center; gap: 10px; font-size: 0.85rem; }
-.toast.success { background: linear-gradient(45deg,#00e676,#00c853); border-left: 4px solid #00600f; }
-.toast.error   { background: linear-gradient(45deg,#ff5252,#d50000); border-left: 4px solid #8a0000; }
-.toast.info    { background: linear-gradient(45deg,#00b0ff,#0091ea); border-left: 4px solid #01579b; }
-@keyframes slideIn { from{transform:translateX(110%);opacity:0} to{transform:translateX(0);opacity:1} }
-@keyframes fadeOut { to{opacity:0} }
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif;}
+body{background:var(--bg);color:var(--text);padding-bottom:100px;min-height:100vh;}
+.hidden{display:none!important;}
+/* Layout */
+.container{max-width:960px;margin:0 auto;padding:20px 16px;}
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;}
+/* Inputs */
+input,textarea,select{
+  width:100%;background:#000;border:1px solid rgba(255,255,255,0.12);
+  padding:11px 14px;color:var(--primary);border-radius:8px;outline:none;
+  font-family:monospace;font-size:0.9rem;margin-bottom:10px;transition:.2s;
+}
+input:focus,textarea:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(0,243,255,0.1);}
+label{display:block;font-size:0.75rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;margin-top:12px;}
+/* Buttons */
+.btn{cursor:pointer;padding:11px 20px;border:none;border-radius:8px;font-weight:700;
+  width:100%;margin-top:6px;background:var(--primary);color:#000;text-transform:uppercase;
+  letter-spacing:.5px;display:flex;align-items:center;justify-content:center;gap:8px;transition:.2s;font-size:0.85rem;}
+.btn:hover{filter:brightness(1.1);box-shadow:0 0 16px rgba(0,243,255,0.25);}
+.btn:disabled{opacity:.5;cursor:not-allowed;filter:none;box-shadow:none;}
+.btn-danger{background:var(--danger);color:#fff;}
+.btn-danger:hover{box-shadow:0 0 16px rgba(255,42,109,0.3);}
+.btn-warn{background:var(--warn);color:#000;}
+.btn-green{background:var(--green);color:#000;}
+.btn-purple{background:var(--purple);color:#fff;}
+.btn-ghost{background:rgba(255,255,255,0.06);color:var(--text);border:1px solid var(--border2);}
+.btn-ghost:hover{background:rgba(255,255,255,0.1);}
+.btn-sm{padding:7px 14px;font-size:0.75rem;width:auto;margin-top:0;}
+/* Loader inside button */
+.loader{border:2.5px solid rgba(0,0,0,0.15);border-top:2.5px solid #000;border-radius:50%;width:16px;height:16px;animation:spin .7s linear infinite;display:none;flex-shrink:0;}
+.btn.loading .loader{display:block!important;}
+.btn.loading .btn-text{display:none;}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Grid helpers */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+/* Tabs */
+.nav-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;margin-bottom:20px;}
+.nav-tabs::-webkit-scrollbar{display:none;}
+.tab-btn{flex-shrink:0;background:var(--surface);border:1px solid var(--border);color:var(--muted);
+  padding:8px 14px;border-radius:8px;cursor:pointer;font-size:.75rem;font-weight:700;
+  white-space:nowrap;transition:.2s;}
+.tab-btn:hover{color:var(--text);border-color:var(--border2);}
+.tab-btn.active{color:var(--primary);border-color:var(--primary);background:var(--primary-dim);}
+/* List items */
+.list-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;justify-content:space-between;}
+/* Image stuff */
+.img-preview{width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--border);display:none;margin-top:6px;}
+.upload-box{border:1.5px dashed rgba(255,255,255,0.15);padding:12px;text-align:center;
+  cursor:pointer;color:var(--muted);border-radius:8px;transition:.2s;margin-bottom:10px;font-size:.85rem;}
+.upload-box:hover{border-color:var(--primary);color:var(--primary);}
+.img-grid{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+.img-wrap-thumb{position:relative;width:64px;height:64px;border:1px solid var(--border);border-radius:6px;}
+.img-wrap-thumb img{width:100%;height:100%;object-fit:cover;border-radius:5px;}
+.img-remove{position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;
+  border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-weight:bold;}
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;}
+@media(min-width:520px){.stats-row{grid-template-columns:repeat(4,1fr);}}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;}
+.stat-val{font-size:1.9rem;font-weight:900;color:var(--primary);line-height:1;}
+.stat-lbl{font-size:.7rem;color:var(--muted);margin-top:5px;text-transform:uppercase;letter-spacing:.5px;}
+/* Badges */
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:.7rem;font-weight:700;text-transform:uppercase;}
+.badge-pending{background:rgba(255,152,0,.2);color:var(--warn);border:1px solid rgba(255,152,0,.3);}
+.badge-completed{background:rgba(0,230,118,.15);color:var(--green);border:1px solid rgba(0,230,118,.3);}
+.badge-refunded{background:rgba(255,42,109,.15);color:var(--danger);border:1px solid rgba(255,42,109,.3);}
+/* Row action buttons */
+.action-row{display:flex;gap:5px;flex-wrap:wrap;flex-shrink:0;}
+/* Login screen */
+#login-screen{height:100vh;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 50%,rgba(0,243,255,0.04) 0%,transparent 70%);}
+.login-card{width:340px;padding:32px;background:var(--surface);border:1px solid var(--border2);border-radius:16px;}
+.login-logo{text-align:center;margin-bottom:24px;}
+.login-logo span{font-size:2.5rem;}
+.login-logo h2{color:var(--primary);font-size:1.2rem;letter-spacing:2px;margin-top:6px;}
+#error-msg{color:var(--danger);font-size:.82rem;margin-top:8px;text-align:center;min-height:18px;line-height:1.4;}
+/* Toast */
+#toast-wrap{position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;max-width:300px;}
+.toast{padding:12px 16px;border-radius:8px;color:#fff;font-weight:600;font-size:.82rem;
+  box-shadow:0 4px 16px rgba(0,0,0,0.4);animation:tIn .25s ease;display:flex;align-items:center;gap:8px;}
+.toast.success{background:linear-gradient(135deg,#00e676,#00c853);border-left:3px solid #00600f;}
+.toast.error{background:linear-gradient(135deg,#ff5252,#d50000);border-left:3px solid #8a0000;}
+.toast.info{background:linear-gradient(135deg,#00b0ff,#0091ea);border-left:3px solid #01579b;}
+@keyframes tIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes tOut{to{opacity:0;transform:translateX(110%)}}
+/* Reviews */
+.review-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px;}
+.review-stars{color:#facc15;font-size:1rem;margin-bottom:4px;}
+.approved-tag{font-size:.7rem;background:rgba(0,230,118,.15);color:var(--green);border:1px solid rgba(0,230,118,.3);padding:2px 7px;border-radius:20px;font-weight:700;}
+.pending-tag{font-size:.7rem;background:rgba(255,152,0,.15);color:var(--warn);border:1px solid rgba(255,152,0,.3);padding:2px 7px;border-radius:20px;font-weight:700;}
+/* Flash sale preview */
+.flash-preview{background:linear-gradient(90deg,#702122,#a40000,#702122);background-size:200%;
+  animation:fp 3s linear infinite;color:#fff;text-align:center;padding:10px;border-radius:8px;
+  font-weight:700;font-size:.9rem;margin-top:12px;display:none;}
+@keyframes fp{0%{background-position:0}100%{background-position:200%}}
+/* Progress bar */
+.prog-wrap{background:#1a1a1a;border-radius:4px;height:5px;margin-top:6px;}
+.prog-bar{height:5px;border-radius:4px;background:var(--primary);}
+/* Coupon active/inactive indicator */
+.dot-active{width:8px;height:8px;background:var(--green);border-radius:50%;display:inline-block;margin-right:5px;}
+.dot-inactive{width:8px;height:8px;background:var(--danger);border-radius:50%;display:inline-block;margin-right:5px;}
+/* Divider */
+.divider{border:none;border-top:1px solid var(--border);margin:16px 0;}
+/* Notification history item */
+.notif-item{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--purple);
+  border-radius:8px;padding:12px;margin-bottom:8px;}
+/* Instruction box */
+.info-box{background:rgba(0,243,255,0.05);border:1px solid rgba(0,243,255,0.2);border-radius:8px;padding:14px;margin-bottom:16px;font-size:.82rem;line-height:1.6;color:rgba(255,255,255,.7);}
+.info-box b{color:var(--primary);}
+/* Header */
+.admin-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;padding:16px 0;border-bottom:1px solid var(--border);}
+.admin-title{font-size:1.1rem;font-weight:800;color:var(--primary);letter-spacing:1px;}
+.admin-user{font-size:.75rem;color:var(--muted);}
+/* New order dot */
+.live-dot{width:9px;height:9px;background:var(--green);border-radius:50%;display:none;animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.4);opacity:.6}}
 </style>
 </head>
 <body>
-<div id="toast-container"></div>
+<div id="toast-wrap"></div>
 
 <!-- ===== LOGIN ===== -->
-<div id="login-screen" style="height:100vh;display:flex;align-items:center;justify-content:center;">
-  <div class="card" style="width:340px;text-align:center;padding:30px;">
-    <div style="font-size:2rem;margin-bottom:8px;">⚡</div>
-    <h2 style="color:var(--primary);margin-bottom:20px;letter-spacing:2px;">ADMIN LOGIN</h2>
-    <input type="email" id="login-email" placeholder="Admin Email" onkeydown="if(event.key==='Enter')doLogin()">
-    <input type="password" id="login-password" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
-    <button class="btn" id="btn-login" onclick="doLogin()"><span>AUTHENTICATE</span><div class="loader"></div></button>
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <span>⚡</span>
+      <h2>ANIFOLD ADMIN</h2>
+    </div>
+    <input type="email" id="l-email" placeholder="Admin Email" onkeydown="if(event.key==='Enter')doLogin()">
+    <input type="password" id="l-pass" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn" id="btn-login" onclick="doLogin()">
+      <div class="loader"></div><span class="btn-text">AUTHENTICATE</span>
+    </button>
     <div id="error-msg"></div>
   </div>
 </div>
@@ -98,23 +173,23 @@ label { display: block; margin-top: 15px; font-size: 0.8rem; color: #aaa; margin
 <div id="dashboard" class="hidden container">
 
   <!-- Header -->
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+  <div class="admin-header">
     <div>
-      <h3 style="color:var(--primary);letter-spacing:1px;">⚡ ANIFOLD ADMIN</h3>
-      <div id="admin-email" style="font-size:0.75rem;color:#555;"></div>
+      <div class="admin-title">⚡ COMMAND CENTER</div>
+      <div class="admin-user" id="admin-email-disp"></div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
-      <span id="new-order-dot" class="hidden" style="background:#00e676;border-radius:50%;width:10px;height:10px;display:inline-block;"></span>
-      <button class="btn btn-danger btn-sm" onclick="doLogout()"><span>EXIT</span></button>
+      <span class="live-dot" id="live-dot" title="New Order!"></span>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">EXIT ↗</button>
     </div>
   </div>
 
   <!-- Stats -->
-  <div class="stat-row">
-    <div class="stat-box"><div class="stat-val" id="stat-rev">₹0</div><div class="stat-lbl">Revenue</div></div>
-    <div class="stat-box"><div class="stat-val" id="stat-ord">0</div><div class="stat-lbl">Orders</div></div>
-    <div class="stat-box"><div class="stat-val" id="stat-usr">0</div><div class="stat-lbl">Users</div></div>
-    <div class="stat-box"><div class="stat-val" id="stat-prd">0</div><div class="stat-lbl">Products</div></div>
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-val" id="s-rev">₹0</div><div class="stat-lbl">Revenue</div></div>
+    <div class="stat-card"><div class="stat-val" id="s-ord">0</div><div class="stat-lbl">Orders</div></div>
+    <div class="stat-card"><div class="stat-val" id="s-usr">0</div><div class="stat-lbl">Users</div></div>
+    <div class="stat-card"><div class="stat-val" id="s-prd">0</div><div class="stat-lbl">Products</div></div>
   </div>
 
   <!-- Tabs -->
@@ -123,287 +198,417 @@ label { display: block; margin-top: 15px; font-size: 0.8rem; color: #aaa; margin
     <button class="tab-btn" onclick="showTab('categories',event)">🗂️ CATEGORIES</button>
     <button class="tab-btn" onclick="showTab('orders',event)">🛒 ORDERS</button>
     <button class="tab-btn" onclick="showTab('users',event)">👥 USERS</button>
-    <button class="tab-btn" onclick="showTab('coupons',event)" style="color:#00ff00;border-color:#00ff00;">🎟️ COUPONS</button>
+    <button class="tab-btn" onclick="showTab('reviews',event)">⭐ REVIEWS</button>
+    <button class="tab-btn" onclick="showTab('flash',event)" style="color:var(--warn);border-color:var(--warn)">⚡ FLASH SALE</button>
+    <button class="tab-btn" onclick="showTab('notif',event)" style="color:var(--purple);border-color:var(--purple)">🔔 NOTIFY</button>
+    <button class="tab-btn" onclick="showTab('coupons',event)" style="color:var(--green);border-color:var(--green)">🎟️ COUPONS</button>
     <button class="tab-btn" onclick="showTab('settings',event)">⚙️ SETTINGS</button>
-    <button class="tab-btn" onclick="showTab('security',event)" style="color:var(--danger);border-color:var(--danger);">🛡️ LOGS</button>
+    <button class="tab-btn" onclick="showTab('security',event)" style="color:var(--danger);border-color:var(--danger)">🛡️ LOGS</button>
   </div>
 
-  <!-- ===== PRODUCTS TAB ===== -->
+  <!-- ======= PRODUCTS ======= -->
   <div id="tab-products">
     <div class="card">
-      <h4 style="margin-bottom:15px;color:var(--primary);">PRODUCT EDITOR</h4>
+      <h4 style="color:var(--primary);margin-bottom:14px;">📦 PRODUCT EDITOR</h4>
       <input type="hidden" id="p-id">
-      <input type="text" id="p-title" placeholder="Product Title">
-      <select id="p-cat"><option value="">Select Category</option></select>
-      <label>Images (Max 15)</label>
-      <div class="image-grid" id="p-img-grid"></div>
-      <div class="upload-box" id="p-upload-btn" onclick="document.getElementById('p-file').click()">📸 ADD IMAGE (Cloudinary)</div>
-      <input type="file" id="p-file" hidden accept="image/*" onchange="uploadProductImage(this)">
-      <div class="grid-2">
-        <input type="number" id="p-real" placeholder="Original Price (₹)">
-        <input type="number" id="p-disc" placeholder="Sale Price (₹)">
+      <input type="text" id="p-title" placeholder="Product Title *">
+      <select id="p-cat"><option value="">Select Category *</option></select>
+      <label>Images (Cloudinary — Max 15)</label>
+      <div class="img-grid" id="p-img-grid"></div>
+      <div class="upload-box" id="p-upload-box" onclick="document.getElementById('p-file').click()">
+        📸 Click to Upload Product Image
       </div>
-      <input type="text" id="p-dl" placeholder="🔐 Secret Download Link (Google Drive / Mega)" style="border-color:#00ff00">
-      <textarea id="p-desc" rows="3" placeholder="Product Description"></textarea>
-      <button class="btn" id="btn-save-p" onclick="saveProduct()"><span>SAVE PRODUCT</span><div class="loader"></div></button>
-      <button class="btn" style="background:#222;color:#aaa;margin-top:5px;" onclick="clearP()">CLEAR FORM</button>
+      <input type="file" id="p-file" hidden accept="image/*" onchange="uploadProductImg(this)">
+      <div class="grid-2">
+        <div><label>Original Price</label><input type="number" id="p-real" placeholder="₹ MRP"></div>
+        <div><label>Sale Price</label><input type="number" id="p-disc" placeholder="₹ Selling Price"></div>
+      </div>
+      <label>🔐 Secret Download Link</label>
+      <input type="text" id="p-dl" placeholder="Google Drive / Mega / Any link" style="border-color:var(--green)">
+      <label>Description</label>
+      <textarea id="p-desc" rows="3" placeholder="Product details..."></textarea>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button class="btn" id="btn-save-p" onclick="saveProduct()">
+          <div class="loader"></div><span class="btn-text">💾 SAVE PRODUCT</span>
+        </button>
+        <button class="btn btn-ghost" style="width:auto;padding:11px 16px;" onclick="clearProductForm()">CLEAR</button>
+      </div>
     </div>
-    <h4 style="margin-bottom:10px;color:#aaa;">ALL PRODUCTS</h4>
-    <div id="list-products"></div>
+    <h4 style="color:var(--muted);margin-bottom:10px;font-size:.85rem;">ALL PRODUCTS</h4>
+    <div id="list-products"><div style="text-align:center;padding:30px;color:var(--muted);">Loading...</div></div>
   </div>
 
-  <!-- ===== CATEGORIES TAB ===== -->
+  <!-- ======= CATEGORIES ======= -->
   <div id="tab-categories" class="hidden">
     <div class="card">
-      <h4 style="margin-bottom:15px;color:var(--primary);">CATEGORY EDITOR</h4>
+      <h4 style="color:var(--primary);margin-bottom:14px;">🗂️ CATEGORY EDITOR</h4>
       <input type="hidden" id="c-id">
-      <input type="text" id="c-name" placeholder="Category Name">
-      <div class="upload-box" onclick="document.getElementById('c-file').click()">📸 Upload Category Icon (Cloudinary)</div>
-      <input type="file" id="c-file" hidden accept="image/*" onchange="uploadSingleImage(this,'c-img','prev-c')">
-      <input type="text" id="c-img" placeholder="Icon URL (auto-filled after upload)">
-      <img id="prev-c" class="img-preview">
-      <button class="btn" id="btn-save-c" onclick="saveCategory()"><span>SAVE CATEGORY</span><div class="loader"></div></button>
-      <button class="btn" style="background:#222;color:#aaa;margin-top:5px;" onclick="clearC()">CLEAR</button>
+      <input type="text" id="c-name" placeholder="Category Name *">
+      <label>Category Icon</label>
+      <div class="upload-box" onclick="document.getElementById('c-file').click()">📸 Upload Icon (Cloudinary)</div>
+      <input type="file" id="c-file" hidden accept="image/*" onchange="uploadSingleImg(this,'c-img-url','c-img-prev')">
+      <input type="text" id="c-img-url" placeholder="Icon URL (auto after upload)">
+      <img id="c-img-prev" class="img-preview">
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button class="btn" id="btn-save-c" onclick="saveCategory()">
+          <div class="loader"></div><span class="btn-text">💾 SAVE</span>
+        </button>
+        <button class="btn btn-ghost" style="width:auto;padding:11px 16px;" onclick="clearCatForm()">CLEAR</button>
+      </div>
     </div>
-    <h4 style="margin-bottom:10px;color:#aaa;">ALL CATEGORIES</h4>
+    <h4 style="color:var(--muted);margin-bottom:10px;font-size:.85rem;">ALL CATEGORIES</h4>
     <div id="list-categories"></div>
   </div>
 
-  <!-- ===== ORDERS TAB ===== -->
+  <!-- ======= ORDERS ======= -->
   <div id="tab-orders" class="hidden">
-    <div class="card">
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <select id="order-filter" onchange="renderOrders()" style="width:auto;margin:0;">
-          <option value="all">All Orders</option>
-          <option value="pending">Pending</option>
+    <div class="card" style="padding:14px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select id="ord-filter" onchange="renderOrders()" style="width:auto;margin:0;">
+          <option value="all">All</option>
           <option value="completed">Completed</option>
+          <option value="pending">Pending</option>
           <option value="refunded">Refunded</option>
         </select>
-        <input type="text" id="order-search" placeholder="Search by email..." oninput="renderOrders()" style="flex:1;margin:0;">
+        <input type="text" id="ord-search" placeholder="Search email..." oninput="renderOrders()" style="flex:1;margin:0;">
       </div>
     </div>
-    <div id="list-orders"></div>
+    <div id="list-orders"><div style="text-align:center;padding:30px;color:var(--muted);">Loading...</div></div>
   </div>
 
-  <!-- ===== USERS TAB ===== -->
+  <!-- ======= USERS ======= -->
   <div id="tab-users" class="hidden">
-    <div class="card">
-      <h4 style="margin-bottom:12px;">USER DATABASE</h4>
-      <input type="text" id="user-search" placeholder="Search by email or name..." oninput="filterUsers(this.value)" style="margin:0;">
+    <div class="card" style="padding:14px;">
+      <input type="text" id="usr-search" placeholder="Search by email or name..." oninput="filterUsers(this.value)" style="margin:0;">
     </div>
-    <div id="list-users"><p style="text-align:center;color:#555;padding:20px;">Loading...</p></div>
+    <div id="list-users"><div style="text-align:center;padding:30px;color:var(--muted);">Loading...</div></div>
   </div>
 
-  <!-- ===== COUPONS TAB ===== -->
-  <div id="tab-coupons" class="hidden">
-    <div class="card" style="border-color:#00ff00;">
-      <h4 style="color:#00ff00;margin-bottom:15px;" id="coup-title">CREATE COUPON</h4>
-      <input type="hidden" id="old-coup-code">
+  <!-- ======= REVIEWS ======= -->
+  <div id="tab-reviews" class="hidden">
+    <div class="info-box">
+      ⭐ <b>Reviews Management</b> — Users submit reviews from product pages. You can <b>Approve</b> (shows on site) or <b>Delete</b> them. Pending reviews are hidden from the public.
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+      <button class="btn btn-ghost btn-sm" onclick="loadReviews('all')">All Reviews</button>
+      <button class="btn btn-sm" style="background:rgba(255,152,0,.2);color:var(--warn);" onclick="loadReviews('pending')">Pending Only</button>
+      <button class="btn btn-sm" style="background:rgba(0,230,118,.15);color:var(--green);" onclick="loadReviews('approved')">Approved Only</button>
+    </div>
+    <div id="list-reviews"><div style="text-align:center;padding:30px;color:var(--muted);">Click a filter above to load reviews.</div></div>
+  </div>
+
+  <!-- ======= FLASH SALE ======= -->
+  <div id="tab-flash" class="hidden">
+    <div class="card" style="border-color:var(--warn);">
+      <h4 style="color:var(--warn);margin-bottom:6px;">⚡ FLASH SALE MANAGER</h4>
+      <p style="font-size:.8rem;color:var(--muted);margin-bottom:14px;">Set a site-wide sale. A banner with countdown timer shows on the user site. All product prices auto-adjust.</p>
+      <label>Sale Title</label>
+      <input type="text" id="fl-title" placeholder="e.g. Mega Anime Sale!">
+      <label>Banner Text (shown on top of site)</label>
+      <input type="text" id="fl-banner" placeholder="e.g. 🔥 LIMITED TIME — 20% OFF Everything!">
+      <label>Discount</label>
       <div class="grid-2">
-        <input type="text" id="coup-code" placeholder="COUPON CODE" style="text-transform:uppercase;">
-        <div style="display:flex;gap:5px;">
-          <input type="number" id="coup-val" placeholder="Value">
-          <select id="coup-type" style="width:80px;"><option value="percent">%</option><option value="fixed">₹</option></select>
+        <input type="number" id="fl-val" placeholder="Value (e.g. 20)">
+        <select id="fl-type"><option value="percent">Percent (%)</option><option value="fixed">Fixed (₹)</option></select>
+      </div>
+      <label>Sale Duration</label>
+      <div class="grid-2">
+        <input type="datetime-local" id="fl-start" style="color:var(--muted);">
+        <input type="datetime-local" id="fl-end" style="color:var(--muted);">
+      </div>
+      <div id="flash-preview-bar" class="flash-preview"></div>
+      <div class="grid-2" style="margin-top:10px;">
+        <button class="btn btn-warn" id="btn-activate-flash" onclick="activateFlash()">
+          <div class="loader"></div><span class="btn-text">🔥 ACTIVATE SALE</span>
+        </button>
+        <button class="btn btn-danger" onclick="endFlash()">⛔ END SALE</button>
+      </div>
+    </div>
+    <div class="card" id="flash-status-card" style="border-color:var(--green);display:none;">
+      <h4 style="color:var(--green);margin-bottom:8px;">✅ CURRENTLY ACTIVE</h4>
+      <div id="flash-status-content" style="font-size:.9rem;"></div>
+    </div>
+  </div>
+
+  <!-- ======= PUSH NOTIFICATIONS ======= -->
+  <div id="tab-notif" class="hidden">
+    <div class="info-box">
+      🔔 <b>Push Notifications</b> — When a user opens anifold.shop, they'll be asked for permission. Once allowed, this panel lets you send them browser notifications instantly. Works on desktop & mobile Chrome/Edge.
+    </div>
+    <div class="card" style="border-color:var(--purple);">
+      <h4 style="color:var(--purple);margin-bottom:14px;">📢 SEND NOTIFICATION</h4>
+      <label>Title</label>
+      <input type="text" id="n-title" placeholder="e.g. 🔥 New Template Drop!">
+      <label>Message</label>
+      <textarea id="n-body" rows="3" placeholder="e.g. Check out our new Naruto & One Piece papercraft templates!"></textarea>
+      <label>Click URL (where user goes after clicking)</label>
+      <input type="text" id="n-url" value="https://anifold.shop" placeholder="https://anifold.shop">
+      <label>Icon URL (optional — your logo)</label>
+      <input type="text" id="n-icon" placeholder="https://... (leave empty for default)">
+      <button class="btn btn-purple" id="btn-send-notif" onclick="sendNotification()">
+        <div class="loader"></div><span class="btn-text">📢 SEND TO ALL SUBSCRIBERS</span>
+      </button>
+      <div style="font-size:.78rem;color:var(--muted);margin-top:8px;" id="sub-count">Loading subscriber count...</div>
+    </div>
+    <div class="card">
+      <h4 style="margin-bottom:12px;font-size:.9rem;color:var(--muted);">RECENT NOTIFICATIONS</h4>
+      <div id="notif-history"><div style="color:var(--muted);font-size:.82rem;">No notifications sent yet.</div></div>
+    </div>
+  </div>
+
+  <!-- ======= COUPONS ======= -->
+  <div id="tab-coupons" class="hidden">
+    <div class="card" style="border-color:var(--green);">
+      <h4 style="color:var(--green);margin-bottom:14px;" id="coup-form-title">🎟️ CREATE COUPON</h4>
+      <input type="hidden" id="coup-old-code">
+      <div class="grid-2">
+        <div>
+          <label>Coupon Code</label>
+          <input type="text" id="coup-code" placeholder="ANIME20" style="text-transform:uppercase;">
+        </div>
+        <div>
+          <label>Discount</label>
+          <div style="display:flex;gap:6px;">
+            <input type="number" id="coup-val" placeholder="Value">
+            <select id="coup-type" style="width:70px;"><option value="percent">%</option><option value="fixed">₹</option></select>
+          </div>
         </div>
       </div>
-      <label>Validity</label>
+      <label>Validity Period</label>
       <div class="grid-2">
-        <input type="datetime-local" id="coup-start" style="color:#aaa;">
-        <input type="datetime-local" id="coup-end" style="color:#aaa;">
+        <input type="datetime-local" id="coup-start" style="color:var(--muted);">
+        <input type="datetime-local" id="coup-end" style="color:var(--muted);">
       </div>
-      <label>Usage Limits</label>
+      <label>Usage Limits (0 = unlimited)</label>
       <div class="grid-2">
-        <input type="number" id="coup-limit-user" placeholder="Max per user (0=unlimited)">
-        <input type="number" id="coup-limit-total" placeholder="Total limit (0=unlimited)">
+        <input type="number" id="coup-lim-user" placeholder="Max per user">
+        <input type="number" id="coup-lim-total" placeholder="Total global limit">
       </div>
-      <div style="display:flex;gap:8px;margin-top:5px;">
-        <button class="btn" id="btn-save-coup" onclick="saveCoupon()"><span>SAVE COUPON</span><div class="loader"></div></button>
-        <button class="btn" id="btn-cancel-coup" style="background:#333;color:#fff;display:none;" onclick="resetCouponForm()">CANCEL</button>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <button class="btn" id="btn-save-coup" onclick="saveCoupon()">
+          <div class="loader"></div><span class="btn-text">💾 SAVE COUPON</span>
+        </button>
+        <button class="btn btn-ghost" id="btn-cancel-coup" style="display:none;width:auto;padding:11px 16px;" onclick="resetCouponForm()">CANCEL</button>
       </div>
     </div>
-    <h4 style="margin-bottom:10px;color:#aaa;">ACTIVE COUPONS</h4>
-    <div id="list-coupons"><p style="text-align:center;color:#555;">Loading...</p></div>
+    <h4 style="color:var(--muted);margin-bottom:10px;font-size:.85rem;">ACTIVE COUPONS</h4>
+    <div id="list-coupons"><div style="text-align:center;padding:30px;color:var(--muted);">Loading...</div></div>
   </div>
 
-  <!-- ===== SETTINGS TAB ===== -->
+  <!-- ======= SETTINGS ======= -->
   <div id="tab-settings" class="hidden">
 
-    <!-- CLOUDINARY CONFIG -->
-    <div class="card" style="border-color:#ff9800;">
-      <h4 style="color:#ff9800;margin-bottom:5px;">☁️ CLOUDINARY CONFIG</h4>
-      <p style="font-size:0.8rem;color:#aaa;margin-bottom:15px;">cloudinary.com → Login → Dashboard se Cloud Name copy karo. Settings → Upload → Upload Presets → Add preset → Signing Mode: <b style="color:#ff9800;">Unsigned</b></p>
+    <!-- Cloudinary Config -->
+    <div class="card" style="border-color:var(--warn);">
+      <h4 style="color:var(--warn);margin-bottom:6px;">☁️ CLOUDINARY (Image Upload)</h4>
+      <div class="info-box" style="margin-bottom:12px;">
+        <b>Step 1:</b> cloudinary.com → Signup/Login → Dashboard → Copy <b>Cloud Name</b><br>
+        <b>Step 2:</b> Settings ⚙️ → Upload tab → Upload Presets → Add preset → Set Signing Mode: <b>Unsigned</b> → Save → Copy preset name<br>
+        <b>Note:</b> Config saves in browser. Enter once, works forever on this browser.
+      </div>
       <label>Cloud Name</label>
-      <input type="text" id="set-cloud-name" placeholder="e.g. dxxxxxxxxx">
-      <label>Upload Preset (Unsigned)</label>
-      <input type="text" id="set-cloud-preset" placeholder="e.g. ml_default">
-      <button class="btn" style="background:#ff9800;color:#000;" onclick="saveCloudinaryConfig()"><span>SAVE & APPLY CLOUDINARY</span></button>
-      <div id="cloud-status" style="font-size:0.8rem;color:#555;margin-top:8px;"></div>
+      <input type="text" id="set-cloud-name" placeholder="e.g. dxxxxxxxxx (from Cloudinary dashboard)">
+      <label>Upload Preset Name (Unsigned)</label>
+      <input type="text" id="set-cloud-preset" placeholder="e.g. ml_default or your preset name">
+      <button class="btn btn-warn" onclick="saveCloudConfig()">
+        <span class="btn-text">💾 SAVE CLOUDINARY CONFIG</span>
+      </button>
+      <div id="cloud-config-status" style="font-size:.8rem;color:var(--muted);margin-top:8px;"></div>
     </div>
 
-    <!-- RAZORPAY + TAX -->
-    <div class="card" style="border-color:#00ff00;">
-      <h4 style="color:#00ff00;margin-bottom:15px;">PAYMENT SETTINGS</h4>
+    <!-- Payment -->
+    <div class="card" style="border-color:var(--green);">
+      <h4 style="color:var(--green);margin-bottom:14px;">💳 PAYMENT SETTINGS</h4>
       <label>Razorpay Key ID</label>
-      <input type="text" id="rzp-key" placeholder="rzp_live_...">
+      <input type="text" id="set-rzp-key" placeholder="rzp_live_...">
       <label>Tax</label>
       <div class="grid-2">
-        <input type="number" id="s-tax-val" placeholder="Tax Value (e.g. 18)" step="0.01">
-        <select id="s-tax-type"><option value="percent">Percent %</option><option value="fixed">Fixed ₹</option></select>
+        <input type="number" id="set-tax-val" placeholder="Value (e.g. 18)" step="0.01">
+        <select id="set-tax-type"><option value="percent">% Percent</option><option value="fixed">₹ Fixed</option></select>
       </div>
-      <button class="btn" onclick="saveMeta(this,'payment')"><span>SAVE PAYMENT</span><div class="loader"></div></button>
+      <button class="btn btn-green" onclick="saveMeta(this,'payment')">
+        <div class="loader"></div><span class="btn-text">💾 SAVE PAYMENT</span>
+      </button>
     </div>
 
-    <!-- BRAND / IDENTITY -->
+    <!-- Brand Identity -->
     <div class="card">
-      <h4 style="margin-bottom:15px;">BRAND IDENTITY</h4>
-      <input type="text" id="s-name" placeholder="Store Name">
+      <h4 style="margin-bottom:14px;">🎨 BRAND IDENTITY</h4>
+      <label>Store Name</label>
+      <input type="text" id="set-name" placeholder="Anifold Store">
       <label>Header Logo</label>
-      <div class="upload-box" onclick="document.getElementById('f-h').click()">📸 Upload Logo</div>
-      <input type="file" id="f-h" hidden accept="image/*" onchange="uploadSingleImage(this,'s-logo','prev-logo')">
-      <input type="text" id="s-logo" placeholder="Logo URL (auto-filled after upload)">
-      <img id="prev-logo" class="img-preview">
+      <div class="upload-box" onclick="document.getElementById('f-hlogo').click()">📸 Upload Logo (Cloudinary)</div>
+      <input type="file" id="f-hlogo" hidden accept="image/*" onchange="uploadSingleImg(this,'set-hlogo','prev-hlogo')">
+      <input type="text" id="set-hlogo" placeholder="Logo URL">
+      <img id="prev-hlogo" class="img-preview">
       <label>Hero / Banner Image</label>
-      <div class="upload-box" onclick="document.getElementById('f-hr').click()">📸 Upload Hero Image</div>
-      <input type="file" id="f-hr" hidden accept="image/*" onchange="uploadSingleImage(this,'s-hero','prev-hero')">
-      <input type="text" id="s-hero" placeholder="Hero URL (auto-filled after upload)">
+      <div class="upload-box" onclick="document.getElementById('f-hero').click()">📸 Upload Hero Image (Cloudinary)</div>
+      <input type="file" id="f-hero" hidden accept="image/*" onchange="uploadSingleImg(this,'set-hero','prev-hero')">
+      <input type="text" id="set-hero" placeholder="Hero Image URL">
       <img id="prev-hero" class="img-preview">
+      <label>Footer Logo URL</label>
+      <input type="text" id="set-flogo" placeholder="Footer Logo URL">
       <label>Favicon URL</label>
-      <input type="text" id="s-fav" placeholder="Favicon URL">
-      <button class="btn" onclick="saveMeta(this,'brand')"><span>SAVE BRAND</span><div class="loader"></div></button>
+      <input type="text" id="set-fav" placeholder="Favicon URL">
+      <button class="btn" onclick="saveMeta(this,'brand')">
+        <div class="loader"></div><span class="btn-text">💾 SAVE BRAND</span>
+      </button>
     </div>
 
-    <!-- CONTACT -->
+    <!-- Contact -->
     <div class="card">
-      <h4 style="margin-bottom:15px;">CONTACT & SOCIAL</h4>
-      <input type="text" id="s-wa" placeholder="WhatsApp Number (with country code)">
-      <input type="text" id="s-email" placeholder="Contact Email">
-      <input type="text" id="s-hours" placeholder="Operating Hours">
-      <textarea id="s-add" rows="2" placeholder="Address"></textarea>
-      <input type="text" id="s-insta" placeholder="Instagram URL">
-      <input type="text" id="s-yt" placeholder="YouTube URL">
-      <textarea id="con-msg" rows="2" placeholder="Welcome Message (shown on contact page)"></textarea>
-      <button class="btn" onclick="saveMeta(this,'contact')"><span>SAVE CONTACT</span><div class="loader"></div></button>
+      <h4 style="margin-bottom:14px;">📞 CONTACT & SOCIAL</h4>
+      <div class="grid-2">
+        <div><label>WhatsApp Number</label><input type="text" id="set-wa" placeholder="+91xxxxxxxxxx"></div>
+        <div><label>Email</label><input type="text" id="set-email" placeholder="support@anifold.shop"></div>
+      </div>
+      <label>Operating Hours</label>
+      <input type="text" id="set-hours" placeholder="Mon-Sat, 10am-7pm">
+      <label>Address</label>
+      <textarea id="set-address" rows="2" placeholder="Full address..."></textarea>
+      <div class="grid-2">
+        <div><label>Instagram URL</label><input type="text" id="set-insta" placeholder="https://instagram.com/..."></div>
+        <div><label>YouTube URL</label><input type="text" id="set-yt" placeholder="https://youtube.com/..."></div>
+      </div>
+      <label>Welcome Message</label>
+      <textarea id="set-welcome" rows="2" placeholder="Welcome message for customers..."></textarea>
+      <button class="btn" onclick="saveMeta(this,'contact')">
+        <div class="loader"></div><span class="btn-text">💾 SAVE CONTACT</span>
+      </button>
     </div>
 
-    <!-- POLICIES -->
+    <!-- Policies -->
     <div class="card">
-      <h4 style="margin-bottom:15px;">POLICIES</h4>
-      <label>Terms & Conditions</label><textarea id="pol-terms" rows="3" placeholder="Terms..."></textarea>
-      <label>Privacy Policy</label><textarea id="pol-privacy" rows="3" placeholder="Privacy..."></textarea>
-      <label>Refund Policy</label><textarea id="pol-refund" rows="3" placeholder="Refund..."></textarea>
-      <label>About Us</label><textarea id="pol-about" rows="3" placeholder="About..."></textarea>
-      <button class="btn" onclick="saveMeta(this,'policies')"><span>SAVE POLICIES</span><div class="loader"></div></button>
+      <h4 style="margin-bottom:14px;">📜 POLICIES</h4>
+      <label>Terms & Conditions</label><textarea id="set-terms" rows="4" placeholder="Terms..."></textarea>
+      <label>Privacy Policy</label><textarea id="set-privacy" rows="4" placeholder="Privacy Policy..."></textarea>
+      <label>Refund Policy</label><textarea id="set-refund" rows="4" placeholder="Refund Policy..."></textarea>
+      <label>About Us</label><textarea id="set-about" rows="4" placeholder="About the store..."></textarea>
+      <button class="btn" onclick="saveMeta(this,'policies')">
+        <div class="loader"></div><span class="btn-text">💾 SAVE POLICIES</span>
+      </button>
+    </div>
+
+    <!-- App Download Link -->
+    <div class="card">
+      <h4 style="margin-bottom:14px;">📱 APP DOWNLOAD LINK</h4>
+      <input type="text" id="set-app-url" placeholder="APK / Play Store URL">
+      <button class="btn" onclick="saveMeta(this,'app')">
+        <div class="loader"></div><span class="btn-text">💾 SAVE APP LINK</span>
+      </button>
     </div>
 
   </div>
 
-  <!-- ===== SECURITY LOGS TAB ===== -->
+  <!-- ======= SECURITY LOGS ======= -->
   <div id="tab-security" class="hidden">
     <div class="card" style="border-color:var(--danger);">
-      <h4 style="color:var(--danger);margin-bottom:15px;">INTRUSION LOGS</h4>
-      <button class="btn btn-danger" onclick="clearLogs()"><span>CLEAR ALL LOGS</span></button>
+      <h4 style="color:var(--danger);margin-bottom:14px;">🛡️ SECURITY / INTRUSION LOGS</h4>
+      <button class="btn btn-danger btn-sm" onclick="clearLogs()">🗑️ CLEAR ALL LOGS</button>
     </div>
     <div id="list-security"></div>
   </div>
 
-</div><!-- end dashboard -->
+</div><!-- /.container -->
 
 <script>
 // ================================================================
-// FIREBASE CONFIG
+// FIREBASE
 // ================================================================
-const firebaseConfig = {
-  apiKey: "AIzaSyAXfqKMmJ5pzO9i0V5h0HfXaDr3rII5ojM",
-  authDomain: "anifold-dp.firebaseapp.com",
-  databaseURL: "https://anifold-dp-default-rtdb.firebaseio.com",
-  projectId: "anifold-dp",
-  storageBucket: "anifold-dp.firebasestorage.app",
-  messagingSenderId: "555175386696",
-  appId: "1:555175386696:web:5d837cf1777f9fc01f827d"
+const fbCfg = {
+  apiKey:"AIzaSyAXfqKMmJ5pzO9i0V5h0HfXaDr3rII5ojM",
+  authDomain:"anifold-dp.firebaseapp.com",
+  databaseURL:"https://anifold-dp-default-rtdb.firebaseio.com",
+  projectId:"anifold-dp",
+  storageBucket:"anifold-dp.firebasestorage.app",
+  messagingSenderId:"555175386696",
+  appId:"1:555175386696:web:5d837cf1777f9fc01f827d"
 };
-try { firebase.initializeApp(firebaseConfig); } catch(e){}
-const auth = firebase.auth();
-const db   = firebase.database();
+try{firebase.initializeApp(fbCfg);}catch(e){}
+const auth=firebase.auth(), db=firebase.database();
 
 // ================================================================
-// CLOUDINARY CONFIG
-// KAISE BHARO:
-//   1. cloudinary.com → Login → Dashboard → "Cloud Name" copy karo
-//   2. cloudinary.com → Settings → Upload → Upload Presets
-//      → "Add upload preset" → Signing Mode: UNSIGNED → Save
-//      → Preset Name copy karo
+// CLOUDINARY — load from localStorage
 // ================================================================
-let CLOUD_NAME   = localStorage.getItem('cf_cloud') || "";
-let CLOUD_PRESET = localStorage.getItem('cf_preset') || "";
+let CLD_NAME   = localStorage.getItem('cld_name')   || '';
+let CLD_PRESET = localStorage.getItem('cld_preset') || '';
 
-window.saveCloudinaryConfig = () => {
-  const cn = document.getElementById('set-cloud-name').value.trim();
-  const cp = document.getElementById('set-cloud-preset').value.trim();
-  if(!cn || !cp) { showToast("Dono fields bharein", 'error'); return; }
-  CLOUD_NAME   = cn;
-  CLOUD_PRESET = cp;
-  localStorage.setItem('cf_cloud', cn);
-  localStorage.setItem('cf_preset', cp);
-  document.getElementById('cloud-status').innerHTML = `✅ <b style="color:#00e676;">${cn}</b> / <b style="color:#00e676;">${cp}</b> — Saved! Test ke liye koi image upload karo.`;
-  showToast("Cloudinary Config Saved! ✅", 'success');
-};
+function saveCloudConfig(){
+  const n=document.getElementById('set-cloud-name').value.trim();
+  const p=document.getElementById('set-cloud-preset').value.trim();
+  if(!n||!p){toast('Both fields required','error');return;}
+  CLD_NAME=n; CLD_PRESET=p;
+  localStorage.setItem('cld_name',n); localStorage.setItem('cld_preset',p);
+  document.getElementById('cloud-config-status').innerHTML=`<span style="color:var(--green)">✅ Active: <b>${n}</b> / ${p}</span>`;
+  toast('Cloudinary config saved! Test by uploading an image.','success');
+}
+
+async function cloudUpload(file, folder='anifold') {
+  if(!CLD_NAME||!CLD_PRESET) throw new Error('Cloudinary config not set — go to Settings tab first!');
+  const fd=new FormData();
+  fd.append('file',file); fd.append('upload_preset',CLD_PRESET); fd.append('folder',folder);
+  const r=await fetch(`https://api.cloudinary.com/v1_1/${CLD_NAME}/image/upload`,{method:'POST',body:fd});
+  const d=await r.json();
+  if(d.secure_url) return d.secure_url;
+  throw new Error(d.error?.message||'Upload failed');
+}
 
 // ================================================================
 // STATE
 // ================================================================
-let allOrdersData = [];
-let allUsersData  = {};
-let currentProductImages = [];
+let allOrders=[], allUsers={}, productImages=[];
 
 // ================================================================
 // TOAST
 // ================================================================
-window.showToast = (msg, type='success') => {
-  const c = document.getElementById('toast-container');
-  const t = document.createElement('div');
-  t.className = `toast ${type}`;
-  t.innerHTML = `<span>${type==='success'?'✔':type==='info'?'ℹ':'✖'}</span> ${msg}`;
-  c.appendChild(t);
-  setTimeout(() => { t.style.animation='fadeOut 0.3s forwards'; setTimeout(()=>t.remove(),300); }, 3500);
-};
+function toast(msg,type='success'){
+  const w=document.getElementById('toast-wrap');
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  t.innerHTML=`<span>${type==='success'?'✔':type==='info'?'ℹ':'✖'}</span>${msg}`;
+  w.appendChild(t);
+  setTimeout(()=>{t.style.animation='tOut .3s forwards';setTimeout(()=>t.remove(),300);},4000);
+}
 
-const btnLoad = (id, on) => { const b=document.getElementById(id); if(b){on?b.classList.add('loading'):b.classList.remove('loading'); b.disabled=on;} };
+// Button loading state
+function btnOn(id){const b=document.getElementById(id);if(b){b.classList.add('loading');b.disabled=true;}}
+function btnOff(id){const b=document.getElementById(id);if(b){b.classList.remove('loading');b.disabled=false;}}
 
 // ================================================================
 // AUTH
 // ================================================================
-window.doLogin = () => {
-  const email = document.getElementById('login-email').value.trim();
-  const pass  = document.getElementById('login-password').value;
-  const err   = document.getElementById('error-msg');
-  err.textContent = '';
-  if(!email||!pass){ err.textContent='⚠️ Email aur password dono chahiye'; return; }
-  btnLoad('btn-login', true);
-  auth.signInWithEmailAndPassword(email, pass).catch(e => {
-    const map = {
-      'auth/user-not-found':        '❌ Ye email registered nahi hai',
-      'auth/wrong-password':        '❌ Password galat hai',
-      'auth/invalid-credential':    '❌ Email ya password galat hai',
-      'auth/too-many-requests':     '⚠️ Bohot zyada tries — 5 min baad try karo',
-      'auth/network-request-failed':'⚠️ Internet check karo',
-      'auth/unauthorized-domain':   '⚠️ Firebase Console → Auth → Settings → Authorized Domains mein "craftyam.anifold.shop" add karo',
-    };
-    err.textContent = map[e.code] || ('❌ ' + e.message);
-    btnLoad('btn-login', false);
+window.doLogin=()=>{
+  const e=document.getElementById('l-email').value.trim();
+  const p=document.getElementById('l-pass').value;
+  const err=document.getElementById('error-msg');
+  err.textContent='';
+  if(!e||!p){err.textContent='⚠️ Enter email and password';return;}
+  btnOn('btn-login');
+  auth.signInWithEmailAndPassword(e,p).catch(er=>{
+    const m={'auth/user-not-found':'❌ Email not registered',
+             'auth/wrong-password':'❌ Wrong password',
+             'auth/invalid-credential':'❌ Wrong email or password',
+             'auth/too-many-requests':'⚠️ Too many attempts — wait 5 min',
+             'auth/network-request-failed':'⚠️ No internet connection',
+             'auth/unauthorized-domain':'⚠️ Go to Firebase Console → Auth → Settings → Authorized Domains → Add: craftyam.anifold.shop'};
+    err.textContent=m[er.code]||('❌ '+er.message);
+    btnOff('btn-login');
   });
 };
-window.doLogout = () => auth.signOut().then(()=>location.reload());
+window.doLogout=()=>auth.signOut().then(()=>location.reload());
 
-auth.onAuthStateChanged(u => {
-  if(u) {
+auth.onAuthStateChanged(u=>{
+  if(u){
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('dashboard').classList.remove('hidden');
-    document.getElementById('admin-email').textContent = u.email;
-    // Load saved cloudinary config into fields
-    if(CLOUD_NAME)   document.getElementById('set-cloud-name').value   = CLOUD_NAME;
-    if(CLOUD_PRESET) document.getElementById('set-cloud-preset').value = CLOUD_PRESET;
-    if(CLOUD_NAME && CLOUD_PRESET) document.getElementById('cloud-status').innerHTML = `✅ Active: <b style="color:#00e676;">${CLOUD_NAME}</b> / ${CLOUD_PRESET}`;
+    document.getElementById('admin-email-disp').textContent=u.email;
+    // Load cloudinary config into settings fields
+    if(CLD_NAME){document.getElementById('set-cloud-name').value=CLD_NAME;}
+    if(CLD_PRESET){document.getElementById('set-cloud-preset').value=CLD_PRESET;}
+    if(CLD_NAME&&CLD_PRESET) document.getElementById('cloud-config-status').innerHTML=`<span style="color:var(--green)">✅ Active: <b>${CLD_NAME}</b> / ${CLD_PRESET}</span>`;
     initData();
+    loadFlashStatus();
+    loadNotifData();
   } else {
     document.getElementById('login-screen').classList.remove('hidden');
     document.getElementById('dashboard').classList.add('hidden');
@@ -411,439 +616,603 @@ auth.onAuthStateChanged(u => {
 });
 
 // ================================================================
-// TAB SWITCHING
+// TABS
 // ================================================================
-const ALL_TABS = ['products','categories','orders','users','coupons','settings','security'];
-window.showTab = (t, e) => {
-  ALL_TABS.forEach(x => document.getElementById('tab-'+x).classList.add('hidden'));
+const TABS=['products','categories','orders','users','reviews','flash','notif','coupons','settings','security'];
+window.showTab=(t,e)=>{
+  TABS.forEach(x=>document.getElementById('tab-'+x).classList.add('hidden'));
   document.getElementById('tab-'+t).classList.remove('hidden');
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  if(e && e.target) e.target.classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  if(e&&e.target) e.target.classList.add('active');
   if(t==='orders') renderOrders();
+  if(t==='flash')  loadFlashStatus();
+  if(t==='notif')  loadNotifData();
 };
 
 // ================================================================
-// CLOUDINARY UPLOAD — DIRECT BROWSER (no PHP needed)
+// IMAGE UPLOADS
 // ================================================================
-async function cloudinaryUpload(file, folder) {
-  if(!CLOUD_NAME || !CLOUD_PRESET) {
-    showToast('⚠️ Pehle Settings mein Cloudinary Config save karo!', 'error');
-    return null;
-  }
-  const f = new FormData();
-  f.append('file', file);
-  f.append('upload_preset', CLOUD_PRESET);
-  f.append('folder', folder);
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {method:'POST', body:f});
-  const data = await res.json();
-  if(data.secure_url) return data.secure_url;
-  throw new Error(data.error?.message || 'Upload failed');
-}
-
-// Single image upload (logo, category icon, hero)
-window.uploadSingleImage = async (input, urlId, prevId) => {
+window.uploadSingleImg=async(input,urlId,prevId)=>{
   if(!input.files[0]) return;
-  const box = input.previousElementSibling; // upload-box div
-  if(box && box.classList.contains('upload-box')) box.textContent = '⏳ Uploading...';
-  try {
-    const url = await cloudinaryUpload(input.files[0], 'anifold-brand');
-    if(url) {
-      document.getElementById(urlId).value = url;
-      const p = document.getElementById(prevId);
-      if(p){ p.src=url; p.style.display='block'; }
-      if(box) box.textContent = '✅ Done! Upload another?';
-      showToast('Image Uploaded! ✅', 'success');
-    }
-  } catch(e) {
-    showToast('Upload Failed: ' + e.message, 'error');
-    if(box) box.textContent = '📸 Upload';
+  const box=input.previousElementSibling;
+  if(box&&box.classList.contains('upload-box')) box.textContent='⏳ Uploading...';
+  try{
+    const url=await cloudUpload(input.files[0],'anifold-brand');
+    document.getElementById(urlId).value=url;
+    const p=document.getElementById(prevId);
+    if(p){p.src=url;p.style.display='block';}
+    if(box) box.textContent='✅ Uploaded! Upload another?';
+    toast('Image uploaded ✅','success');
+  }catch(er){
+    toast('Upload failed: '+er.message,'error');
+    if(box) box.textContent='📸 Upload';
   }
 };
 
-// Product multi-image upload
-window.uploadProductImage = async (input) => {
+window.uploadProductImg=async(input)=>{
   if(!input.files[0]) return;
-  if(currentProductImages.length >= 15) { showToast('Max 15 images!', 'error'); return; }
-  const box = document.getElementById('p-upload-btn');
-  box.textContent = '⏳ Uploading...';
-  box.style.pointerEvents = 'none';
-  try {
-    const url = await cloudinaryUpload(input.files[0], 'anifold-products');
-    if(url) {
-      currentProductImages.push(url);
-      renderProductPreviews();
-      showToast('Image Added! ✅ (' + (currentProductImages.length) + '/15)', 'success');
-    }
-  } catch(e) {
-    showToast('Upload Failed: ' + e.message, 'error');
+  if(productImages.length>=15){toast('Max 15 images!','error');return;}
+  const box=document.getElementById('p-upload-box');
+  box.textContent='⏳ Uploading...';
+  box.style.pointerEvents='none';
+  try{
+    const url=await cloudUpload(input.files[0],'anifold-products');
+    productImages.push(url);
+    renderProductImgGrid();
+    toast(`Image ${productImages.length}/15 added ✅`,'success');
+  }catch(er){
+    toast('Upload failed: '+er.message,'error');
   }
-  box.textContent = '📸 ADD IMAGE (Cloudinary)';
-  box.style.pointerEvents = 'auto';
-  input.value = '';
+  box.textContent='📸 Click to Upload Product Image';
+  box.style.pointerEvents='auto';
+  input.value='';
 };
 
-function renderProductPreviews() {
-  const g = document.getElementById('p-img-grid'); g.innerHTML = '';
-  currentProductImages.forEach((url,i) => {
-    g.innerHTML += `<div class="image-wrapper"><img src="${url}" class="image-thumb"><span class="remove-img" onclick="removeImg(${i})">✕</span></div>`;
-  });
+function renderProductImgGrid(){
+  const g=document.getElementById('p-img-grid');
+  g.innerHTML=productImages.map((u,i)=>`<div class="img-wrap-thumb"><img src="${u}"><span class="img-remove" onclick="removeProductImg(${i})">✕</span></div>`).join('');
 }
-window.removeImg = (i) => { currentProductImages.splice(i,1); renderProductPreviews(); };
+window.removeProductImg=(i)=>{productImages.splice(i,1);renderProductImgGrid();};
 
 // ================================================================
 // PRODUCTS
 // ================================================================
-window.saveProduct = () => {
-  const id = document.getElementById('p-id').value;
-  const dl = document.getElementById('p-dl').value.trim();
-  if(!currentProductImages.length) { showToast('Kam se kam ek image upload karo', 'error'); return; }
-  const title = document.getElementById('p-title').value.trim();
-  if(!title) { showToast('Product title required', 'error'); return; }
-  const d = {
-    title,
-    category:        document.getElementById('p-cat').value,
-    images:          currentProductImages,
-    imageUrl:        currentProductImages[0],
-    realPrice:       document.getElementById('p-real').value,
-    discountedPrice: document.getElementById('p-disc').value,
-    description:     document.getElementById('p-desc').value,
-    updatedAt:       Date.now()
+window.saveProduct=()=>{
+  const id=document.getElementById('p-id').value;
+  const title=document.getElementById('p-title').value.trim();
+  const dl=document.getElementById('p-dl').value.trim();
+  if(!title){toast('Product title required','error');return;}
+  if(!productImages.length){toast('Upload at least 1 image','error');return;}
+  const d={
+    title, category:document.getElementById('p-cat').value,
+    images:productImages, imageUrl:productImages[0],
+    realPrice:document.getElementById('p-real').value,
+    discountedPrice:document.getElementById('p-disc').value,
+    description:document.getElementById('p-desc').value,
+    updatedAt:Date.now()
   };
-  btnLoad('btn-save-p', true);
-  const ref = id ? db.ref('products/'+id) : db.ref('products').push();
-  ref.update(d).then(() => {
-    if(dl) db.ref('secure_links/'+ref.key).update({ link:dl, updatedAt:Date.now() });
-    showToast('Product Saved! ✅');
-    clearP();
-  }).catch(e => showToast(e.message, 'error')).finally(() => btnLoad('btn-save-p', false));
+  btnOn('btn-save-p');
+  const ref=id?db.ref('products/'+id):db.ref('products').push();
+  ref.update(d).then(()=>{
+    if(dl) db.ref('secure_links/'+ref.key).update({link:dl,updatedAt:Date.now()});
+    toast('Product saved ✅');
+    clearProductForm();
+  }).catch(er=>toast(er.message,'error')).finally(()=>btnOff('btn-save-p'));
 };
-window.delProd = (id) => { if(confirm('Delete this product?')) db.ref('products/'+id).remove().then(()=>showToast('Product Deleted')); };
-window.editProd = (id) => {
-  db.ref('products/'+id).once('value').then(s => {
-    const v = s.val();
-    document.getElementById('p-id').value = id;
-    document.getElementById('p-title').value = v.title || '';
-    document.getElementById('p-cat').value = v.category || '';
-    document.getElementById('p-real').value = v.realPrice || '';
-    document.getElementById('p-disc').value = v.discountedPrice || '';
-    document.getElementById('p-desc').value = v.description || '';
-    currentProductImages = v.images || (v.imageUrl ? [v.imageUrl] : []);
-    renderProductPreviews();
-    db.ref('secure_links/'+id).once('value').then(sl => {
-      if(sl.exists()) document.getElementById('p-dl').value = sl.val().link || '';
+window.delProduct=(id)=>{if(confirm('Delete this product?'))db.ref('products/'+id).remove().then(()=>toast('Deleted'));};
+window.editProduct=(id)=>{
+  db.ref('products/'+id).once('value').then(s=>{
+    const v=s.val();
+    document.getElementById('p-id').value=id;
+    document.getElementById('p-title').value=v.title||'';
+    document.getElementById('p-cat').value=v.category||'';
+    document.getElementById('p-real').value=v.realPrice||'';
+    document.getElementById('p-disc').value=v.discountedPrice||'';
+    document.getElementById('p-desc').value=v.description||'';
+    productImages=v.images||(v.imageUrl?[v.imageUrl]:[]);
+    renderProductImgGrid();
+    db.ref('secure_links/'+id).once('value').then(sl=>{
+      if(sl.exists()) document.getElementById('p-dl').value=sl.val().link||'';
     });
-    // Switch to products tab and scroll to form
-    showTab('products', null);
-    document.querySelector('#tab-products .card').scrollIntoView({behavior:'smooth'});
+    // Switch to products tab
+    TABS.forEach(x=>document.getElementById('tab-'+x).classList.add('hidden'));
+    document.getElementById('tab-products').classList.remove('hidden');
     document.querySelectorAll('.tab-btn')[0].classList.add('active');
+    document.querySelector('#tab-products .card').scrollIntoView({behavior:'smooth'});
   });
 };
-window.clearP = () => {
-  ['p-id','p-title','p-real','p-disc','p-dl','p-desc'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('p-cat').value = '';
-  currentProductImages = [];
-  renderProductPreviews();
+window.clearProductForm=()=>{
+  ['p-id','p-title','p-real','p-disc','p-dl','p-desc'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('p-cat').value='';
+  productImages=[]; renderProductImgGrid();
 };
 
 // ================================================================
 // CATEGORIES
 // ================================================================
-window.saveCategory = () => {
-  const id = document.getElementById('c-id').value;
-  const name = document.getElementById('c-name').value.trim();
-  const image = document.getElementById('c-img').value.trim();
-  if(!name) { showToast('Category name required', 'error'); return; }
-  btnLoad('btn-save-c', true);
-  const ref = id ? db.ref('categories/'+id) : db.ref('categories').push();
-  ref.update({name, image}).then(()=>{ showToast('Category Saved! ✅'); clearC(); }).finally(()=>btnLoad('btn-save-c',false));
+window.saveCategory=()=>{
+  const id=document.getElementById('c-id').value;
+  const name=document.getElementById('c-name').value.trim();
+  if(!name){toast('Category name required','error');return;}
+  btnOn('btn-save-c');
+  const ref=id?db.ref('categories/'+id):db.ref('categories').push();
+  ref.update({name,image:document.getElementById('c-img-url').value})
+    .then(()=>{toast('Category saved ✅');clearCatForm();})
+    .finally(()=>btnOff('btn-save-c'));
 };
-window.delCat = (id) => { if(confirm('Delete?')) db.ref('categories/'+id).remove().then(()=>showToast('Deleted')); };
-window.editCat = (id) => {
-  db.ref('categories/'+id).once('value').then(s => {
-    const v = s.val();
-    document.getElementById('c-id').value = id;
-    document.getElementById('c-name').value = v.name || '';
-    document.getElementById('c-img').value = v.image || '';
-    if(v.image){ const p=document.getElementById('prev-c'); p.src=v.image; p.style.display='block'; }
+window.delCategory=(id)=>{if(confirm('Delete?'))db.ref('categories/'+id).remove().then(()=>toast('Deleted'));};
+window.editCategory=(id)=>{
+  db.ref('categories/'+id).once('value').then(s=>{
+    const v=s.val();
+    document.getElementById('c-id').value=id;
+    document.getElementById('c-name').value=v.name||'';
+    document.getElementById('c-img-url').value=v.image||'';
+    if(v.image){const p=document.getElementById('c-img-prev');p.src=v.image;p.style.display='block';}
   });
 };
-window.clearC = () => { ['c-id','c-name','c-img'].forEach(x=>document.getElementById(x).value=''); document.getElementById('prev-c').style.display='none'; };
+window.clearCatForm=()=>{
+  ['c-id','c-name','c-img-url'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('c-img-prev').style.display='none';
+};
 
 // ================================================================
 // ORDERS
 // ================================================================
-function renderOrders() {
-  const filter = document.getElementById('order-filter').value;
-  const search = (document.getElementById('order-search').value || '').toLowerCase();
-  const l = document.getElementById('list-orders'); l.innerHTML = '';
-  if(!allOrdersData.length) { l.innerHTML='<p style="text-align:center;color:#555;padding:20px;">No orders yet.</p>'; return; }
-  const list = allOrdersData
-    .filter(o => (filter==='all' || (o.status||'pending')===filter) && (!search || (o.email||'').toLowerCase().includes(search)))
-    .sort((a,b) => (b.date||b.createdAt||0) - (a.date||a.createdAt||0));
-  if(!list.length) { l.innerHTML='<p style="text-align:center;color:#555;padding:20px;">No matching orders.</p>'; return; }
-  list.forEach(o => {
-    const st = o.status || 'pending';
-    l.innerHTML += `<div class="list-item" style="flex-direction:column;align-items:start;gap:8px;">
-      <div style="display:flex;justify-content:space-between;width:100%;flex-wrap:wrap;gap:5px;">
+function renderOrders(){
+  const filter=document.getElementById('ord-filter').value;
+  const q=(document.getElementById('ord-search').value||'').toLowerCase();
+  const l=document.getElementById('list-orders'); l.innerHTML='';
+  if(!allOrders.length){l.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);">No orders yet.</div>';return;}
+  const list=allOrders
+    .filter(o=>(filter==='all'||(o.status||'pending')===filter)&&(!q||(o.email||'').toLowerCase().includes(q)))
+    .sort((a,b)=>(b.date||b.createdAt||0)-(a.date||a.createdAt||0));
+  if(!list.length){l.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);">No matching orders.</div>';return;}
+  list.forEach(o=>{
+    const st=o.status||'pending';
+    l.innerHTML+=`<div class="list-item" style="flex-direction:column;align-items:stretch;gap:10px;">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">
         <div>
-          <div style="color:var(--primary);font-weight:bold;">${o.item || 'Order'}</div>
-          <div style="font-size:0.8rem;color:#aaa;">${o.email} • ${new Date(o.date||o.createdAt||0).toLocaleString()}</div>
-          ${o.paymentId ? `<div style="font-size:0.7rem;color:#555;">ID: ${o.paymentId}</div>` : ''}
+          <div style="font-weight:700;color:var(--primary);">${o.item||'Order'}</div>
+          <div style="font-size:.8rem;color:var(--muted);">${o.email} • ${new Date(o.date||o.createdAt||0).toLocaleString()}</div>
+          ${o.paymentId?`<div style="font-size:.7rem;color:#444;">Payment: ${o.paymentId}</div>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span class="badge badge-${st}">${st}</span>
-          <span style="color:var(--primary);font-weight:bold;font-size:1.1rem;">₹${o.price||0}</span>
+          <span style="font-size:1.1rem;font-weight:900;color:var(--primary);">₹${o.price||0}</span>
         </div>
       </div>
       <div class="action-row">
-        <button class="btn btn-sm" style="background:#00e676;color:#000;" onclick="setOrderStatus('${o.key}','completed')">✓ Complete</button>
-        <button class="btn btn-sm btn-danger" onclick="setOrderStatus('${o.key}','refunded')">↩ Refund</button>
-        <button class="btn btn-sm" style="background:#333;color:#aaa;" onclick="setOrderStatus('${o.key}','pending')">⏳ Pending</button>
-        <button class="btn btn-sm" style="background:#1a1a2e;color:#aaa;" onclick="printInvoice('${o.key}')">🧾 Invoice</button>
+        <button class="btn btn-green btn-sm" onclick="setOrdStatus('${o.key}','completed')">✓ Complete</button>
+        <button class="btn btn-sm" style="background:rgba(255,152,0,.2);color:var(--warn);" onclick="setOrdStatus('${o.key}','pending')">⏳ Pending</button>
+        <button class="btn btn-danger btn-sm" onclick="setOrdStatus('${o.key}','refunded')">↩ Refund</button>
+        <button class="btn btn-ghost btn-sm" onclick="printInvoice('${o.key}')">🧾 Invoice</button>
       </div>
     </div>`;
   });
 }
-window.setOrderStatus = (id, status) => { db.ref('orders/'+id).update({status}).then(()=>{ showToast(`Marked: ${status}`); renderOrders(); }); };
-window.printInvoice = (id) => {
-  const o = allOrdersData.find(x=>x.key===id); if(!o) return;
-  const w = window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><title>Invoice #${id.slice(-6)}</title>
-  <style>body{font-family:Arial;padding:40px;max-width:600px;margin:auto;}h1{color:#702122;border-bottom:2px solid #702122;padding-bottom:10px;}table{width:100%;border-collapse:collapse;margin:20px 0;}td{padding:8px 0;border-bottom:1px solid #eee;}.label{color:#888;font-size:0.9rem;}.btn{padding:10px 20px;background:#702122;color:white;border:none;border-radius:6px;cursor:pointer;font-size:1rem;margin-top:20px;}</style>
+window.setOrdStatus=(id,st)=>db.ref('orders/'+id).update({status:st}).then(()=>{toast(`Marked: ${st}`);renderOrders();});
+window.printInvoice=(id)=>{
+  const o=allOrders.find(x=>x.key===id); if(!o)return;
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>Invoice</title>
+  <style>body{font-family:Arial;padding:40px;max-width:580px;margin:auto;}
+  h1{color:#702122;border-bottom:2px solid #702122;padding-bottom:8px;margin-bottom:20px;}
+  table{width:100%;border-collapse:collapse;}td{padding:9px 4px;border-bottom:1px solid #eee;}
+  .label{color:#888;font-size:.88rem;}.total{font-size:1.1rem;font-weight:900;color:#702122;}
+  .btn{margin-top:20px;padding:10px 22px;background:#702122;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.95rem;}</style>
   </head><body>
   <h1>🐉 Anifold Store — Invoice</h1>
   <table>
     <tr><td class="label">Order ID</td><td><b>#${id.slice(-8).toUpperCase()}</b></td></tr>
     <tr><td class="label">Product</td><td>${o.item||'N/A'}</td></tr>
     <tr><td class="label">Customer</td><td>${o.email}</td></tr>
-    <tr><td class="label">Amount</td><td><b>₹${o.price||0}</b></td></tr>
+    <tr><td class="label">Amount</td><td class="total">₹${o.price||0}</td></tr>
     <tr><td class="label">Payment ID</td><td>${o.paymentId||'N/A'}</td></tr>
     <tr><td class="label">Date</td><td>${new Date(o.date||o.createdAt||0).toLocaleString()}</td></tr>
-    <tr><td class="label">Status</td><td><b style="color:${o.status==='completed'?'green':'orange'}">${o.status||'pending'}</b></td></tr>
+    <tr><td class="label">Status</td><td><b style="color:${(o.status||'pending')==='completed'?'green':'orange'}">${o.status||'pending'}</b></td></tr>
   </table>
-  <p style="font-size:0.85rem;color:#999;">Thank you for purchasing from Anifold Store! For support, WhatsApp us.</p>
-  <button class="btn" onclick="window.print()">🖨️ Print Invoice</button>
+  <p style="margin-top:20px;font-size:.82rem;color:#999;">Thank you for purchasing from Anifold Store!</p>
+  <button class="btn" onclick="window.print()">🖨️ Print</button>
   </body></html>`);
 };
 
 // ================================================================
 // USERS
 // ================================================================
-window.filterUsers = (q) => {
-  const l = document.getElementById('list-users'); l.innerHTML = '';
-  const entries = Object.entries(allUsersData).filter(([uid,u]) => !q || (u.email||'').toLowerCase().includes(q.toLowerCase()) || (u.firstName||'').toLowerCase().includes(q.toLowerCase()));
-  if(!entries.length) { l.innerHTML='<p style="text-align:center;color:#555;padding:20px;">No users found.</p>'; return; }
-  entries.forEach(([uid,u]) => {
-    const name = u.firstName ? `${u.firstName} ${u.lastName||''}`.trim() : 'No Name';
-    l.innerHTML += `<div class="list-item" style="flex-direction:column;align-items:start;">
-      <div style="font-weight:bold;color:#fff;">${u.email}</div>
-      <div style="font-size:0.8rem;color:#aaa;margin:4px 0;">👤 ${name} | 📞 ${u.mobile||'N/A'}</div>
-      <div style="font-size:0.7rem;color:#444;margin-bottom:8px;">UID: ${uid}</div>
+window.filterUsers=(q)=>{
+  const l=document.getElementById('list-users'); l.innerHTML='';
+  const entries=Object.entries(allUsers).filter(([uid,u])=>!q||(u.email||'').toLowerCase().includes(q.toLowerCase())||(u.firstName||'').toLowerCase().includes(q.toLowerCase()));
+  if(!entries.length){l.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);">No users found.</div>';return;}
+  entries.forEach(([uid,u])=>{
+    const name=u.firstName?`${u.firstName} ${u.lastName||''}`.trim():'No Name';
+    l.innerHTML+=`<div class="list-item" style="flex-direction:column;align-items:stretch;gap:8px;">
+      <div>
+        <div style="font-weight:700;color:#fff;">${u.email}</div>
+        <div style="font-size:.8rem;color:var(--muted);">👤 ${name} | 📞 ${u.mobile||'N/A'}</div>
+        <div style="font-size:.7rem;color:#444;margin-top:2px;">UID: ${uid}</div>
+      </div>
       <div class="action-row">
-        <button class="btn btn-sm btn-warn" onclick="resetPass('${u.email}')">Reset Password</button>
-        <button class="btn btn-sm btn-danger" onclick="delUser('${uid}')">Delete Data</button>
+        <button class="btn btn-warn btn-sm" onclick="resetUserPass('${u.email}')">📧 Reset Password</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteUserData('${uid}')">🗑️ Delete Data</button>
       </div>
     </div>`;
   });
 };
-window.resetPass = (email) => { if(confirm('Send password reset to ' + email + '?')) auth.sendPasswordResetEmail(email).then(()=>showToast('Reset email sent!')); };
-window.delUser = (uid) => { if(confirm('Delete user data from DB? (Auth account stays)')) db.ref('users/'+uid).remove().then(()=>showToast('User data deleted')); };
+window.resetUserPass=(e)=>{if(confirm('Send password reset to '+e+'?'))auth.sendPasswordResetEmail(e).then(()=>toast('Reset email sent!'));};
+window.deleteUserData=(uid)=>{if(confirm('Delete user data from DB?'))db.ref('users/'+uid).remove().then(()=>toast('User data deleted'));};
+
+// ================================================================
+// REVIEWS
+// ================================================================
+window.loadReviews=(filter='all')=>{
+  const l=document.getElementById('list-reviews');
+  l.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);">Loading reviews...</div>';
+  db.ref('reviews').once('value').then(s=>{
+    l.innerHTML='';
+    if(!s.exists()){l.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);">No reviews yet.</div>';return;}
+    let count=0;
+    s.forEach(prodSnap=>{
+      prodSnap.forEach(rev=>{
+        const v=rev.val();
+        const isApproved=!!v.approved;
+        if(filter==='pending'&&isApproved) return;
+        if(filter==='approved'&&!isApproved) return;
+        count++;
+        const stars='★'.repeat(v.rating||5)+'☆'.repeat(5-(v.rating||5));
+        l.innerHTML+=`<div class="review-card">
+          <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:start;">
+            <div style="flex:1;">
+              <div class="review-stars">${stars}</div>
+              <div style="font-weight:700;font-size:.9rem;">${v.userName||'Anonymous'}</div>
+              <div style="font-size:.75rem;color:var(--muted);">${v.productName||prodSnap.key} • ${new Date(v.date||0).toLocaleDateString()}</div>
+              <div style="font-size:.88rem;color:rgba(255,255,255,.8);margin-top:8px;">${v.comment||''}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+              <span class="${isApproved?'approved-tag':'pending-tag'}">${isApproved?'✓ Approved':'⏳ Pending'}</span>
+              <div class="action-row">
+                ${!isApproved?`<button class="btn btn-green btn-sm" onclick="approveReview('${prodSnap.key}','${rev.key}',true)">✓ Approve</button>`:''}
+                ${isApproved?`<button class="btn btn-ghost btn-sm" onclick="approveReview('${prodSnap.key}','${rev.key}',false)">↩ Unapprove</button>`:''}
+                <button class="btn btn-danger btn-sm" onclick="deleteReview('${prodSnap.key}','${rev.key}')">🗑️</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      });
+    });
+    if(!count) l.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);">No reviews for this filter.</div>';
+  });
+};
+window.approveReview=(pid,rid,val)=>{
+  db.ref(`reviews/${pid}/${rid}`).update({approved:val}).then(()=>{
+    toast(val?'Review approved ✅':'Review unapproved');
+    // Refresh current filter
+    const activeBtn=document.querySelector('#tab-reviews button.btn-sm[style*="color"]');
+    loadReviews('all');
+  });
+};
+window.deleteReview=(pid,rid)=>{
+  if(confirm('Delete this review?'))db.ref(`reviews/${pid}/${rid}`).remove().then(()=>{toast('Review deleted');loadReviews('all');});
+};
+
+// ================================================================
+// FLASH SALE
+// ================================================================
+window.activateFlash=()=>{
+  const end=document.getElementById('fl-end').value;
+  if(!end){toast('End time is required','error');return;}
+  const data={
+    title:document.getElementById('fl-title').value||'Flash Sale',
+    banner:document.getElementById('fl-banner').value||'🔥 Flash Sale is Live!',
+    discount:parseInt(document.getElementById('fl-val').value)||0,
+    type:document.getElementById('fl-type').value,
+    startTime:document.getElementById('fl-start').value?Date.parse(document.getElementById('fl-start').value):Date.now(),
+    endTime:Date.parse(end),
+    active:true
+  };
+  btnOn('btn-activate-flash');
+  db.ref('meta/flashSale').set(data).then(()=>{
+    toast('Flash Sale Activated! 🔥🔥','success');
+    loadFlashStatus();
+    // Show preview bar
+    showFlashPreview(data);
+  }).finally(()=>btnOff('btn-activate-flash'));
+};
+window.endFlash=()=>{
+  if(confirm('End the flash sale?'))db.ref('meta/flashSale').update({active:false}).then(()=>{
+    toast('Flash sale ended');
+    document.getElementById('flash-status-card').style.display='none';
+    document.getElementById('flash-preview-bar').style.display='none';
+  });
+};
+function showFlashPreview(data){
+  const pb=document.getElementById('flash-preview-bar');
+  pb.style.display='block';
+  pb.textContent=`Preview → ${data.banner} [${data.discount}${data.type==='percent'?'%':'₹'} OFF]`;
+}
+function loadFlashStatus(){
+  db.ref('meta/flashSale').once('value').then(s=>{
+    const card=document.getElementById('flash-status-card');
+    if(s.exists()&&s.val().active){
+      const v=s.val();
+      const rem=Math.max(0,v.endTime-Date.now());
+      const hrs=Math.floor(rem/3600000), mins=Math.floor((rem%3600000)/60000);
+      card.style.display='block';
+      document.getElementById('flash-status-content').innerHTML=`
+        <div><b style="color:#fff;">${v.title}</b></div>
+        <div style="font-size:.82rem;color:var(--muted);margin-top:4px;">${v.banner}</div>
+        <div style="margin-top:8px;">Discount: <b style="color:var(--warn)">${v.discount}${v.type==='percent'?'%':'₹'} OFF</b></div>
+        <div>Time Left: <b style="color:var(--green)">${hrs}h ${mins}m</b></div>
+        <div style="font-size:.75rem;color:var(--muted);margin-top:4px;">Ends: ${new Date(v.endTime).toLocaleString()}</div>
+      `;
+      showFlashPreview(v);
+    } else {
+      card.style.display='none';
+    }
+  });
+}
+
+// ================================================================
+// PUSH NOTIFICATIONS
+// ================================================================
+function loadNotifData(){
+  // Subscriber count
+  db.ref('pushSubscriptions').once('value').then(s=>{
+    const el=document.getElementById('sub-count');
+    el.textContent=s.exists()?`${Object.keys(s.val()).length} subscribers — push notification dene pe unhe milega`:'No subscribers yet. Users will subscribe when they visit the site.';
+  });
+  // History
+  db.ref('notifications').limitToLast(10).once('value').then(s=>{
+    const l=document.getElementById('notif-history'); l.innerHTML='';
+    if(!s.exists()){l.innerHTML='<div style="color:var(--muted);font-size:.82rem;">No notifications sent yet.</div>';return;}
+    const items=[]; s.forEach(c=>items.push({...c.val(),key:c.key}));
+    items.reverse().forEach(n=>{
+      l.innerHTML+=`<div class="notif-item">
+        <div style="font-weight:700;font-size:.9rem;">${n.title}</div>
+        <div style="font-size:.82rem;color:var(--muted);margin-top:3px;">${n.body}</div>
+        <div style="font-size:.72rem;color:#444;margin-top:5px;">${new Date(n.sentAt||0).toLocaleString()} • <a href="${n.url||'#'}" style="color:var(--purple);">${n.url||''}</a></div>
+      </div>`;
+    });
+  });
+}
+window.sendNotification=()=>{
+  const title=document.getElementById('n-title').value.trim();
+  const body=document.getElementById('n-body').value.trim();
+  if(!title||!body){toast('Title and message required','error');return;}
+  btnOn('btn-send-notif');
+  const data={title,body,url:document.getElementById('n-url').value||'https://anifold.shop',icon:document.getElementById('n-icon').value||'',sentAt:Date.now()};
+  // Save to notifications history
+  db.ref('notifications').push(data).then(()=>{
+    // Also update meta/latestNotification — user site SW picks this up
+    db.ref('meta/latestNotification').set(data);
+    toast('Notification sent to all subscribers! 📢','info');
+    document.getElementById('n-title').value='';
+    document.getElementById('n-body').value='';
+    loadNotifData();
+  }).catch(er=>toast(er.message,'error')).finally(()=>btnOff('btn-send-notif'));
+};
 
 // ================================================================
 // COUPONS
 // ================================================================
-window.saveCoupon = () => {
-  let code = document.getElementById('coup-code').value.toUpperCase().trim().replace(/[^A-Z0-9]/g,'');
-  const val = document.getElementById('coup-val').value;
-  if(!code || !val) { showToast('Code and value required', 'error'); return; }
-  const oldCode = document.getElementById('old-coup-code').value;
-  btnLoad('btn-save-coup', true);
-  const data = {
-    code,
-    discount:     parseInt(val),
-    type:         document.getElementById('coup-type').value,
-    startTime:    document.getElementById('coup-start').value ? Date.parse(document.getElementById('coup-start').value) : 0,
-    endTime:      document.getElementById('coup-end').value ? Date.parse(document.getElementById('coup-end').value) : 0,
-    limitPerUser: parseInt(document.getElementById('coup-limit-user').value) || 0,
-    limitTotal:   parseInt(document.getElementById('coup-limit-total').value) || 0,
+window.saveCoupon=()=>{
+  let code=document.getElementById('coup-code').value.toUpperCase().trim().replace(/[^A-Z0-9]/g,'');
+  const val=document.getElementById('coup-val').value;
+  if(!code||!val){toast('Code and value required','error');return;}
+  const oldCode=document.getElementById('coup-old-code').value;
+  btnOn('btn-save-coup');
+  const data={
+    code, discount:parseInt(val),
+    type:document.getElementById('coup-type').value,
+    startTime:document.getElementById('coup-start').value?Date.parse(document.getElementById('coup-start').value):0,
+    endTime:document.getElementById('coup-end').value?Date.parse(document.getElementById('coup-end').value):0,
+    limitPerUser:parseInt(document.getElementById('coup-lim-user').value)||0,
+    limitTotal:parseInt(document.getElementById('coup-lim-total').value)||0,
   };
-  if(oldCode && oldCode !== code) db.ref('coupons/'+oldCode).remove();
+  if(oldCode&&oldCode!==code) db.ref('coupons/'+oldCode).remove();
   db.ref('coupons/'+code).set(data)
-    .then(()=>{ showToast('Coupon Saved! ✅'); resetCouponForm(); })
-    .catch(e=>showToast(e.message,'error'))
-    .finally(()=>btnLoad('btn-save-coup',false));
+    .then(()=>{toast('Coupon saved ✅');resetCouponForm();})
+    .catch(er=>toast(er.message,'error'))
+    .finally(()=>btnOff('btn-save-coup'));
 };
-window.editCoupon = (code) => {
-  db.ref('coupons/'+code).once('value').then(s => {
-    const v = s.val(); if(!v) return;
-    document.getElementById('old-coup-code').value = code;
-    document.getElementById('coup-code').value = v.code;
-    document.getElementById('coup-val').value = v.discount;
-    document.getElementById('coup-type').value = v.type || 'percent';
-    if(v.startTime) document.getElementById('coup-start').value = new Date(v.startTime - new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
-    if(v.endTime)   document.getElementById('coup-end').value   = new Date(v.endTime   - new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
-    document.getElementById('coup-limit-user').value  = v.limitPerUser || '';
-    document.getElementById('coup-limit-total').value = v.limitTotal   || '';
-    document.getElementById('coup-title').textContent = 'EDIT: ' + code;
-    document.querySelector('#btn-save-coup span').textContent = 'UPDATE COUPON';
-    document.getElementById('btn-cancel-coup').style.display = 'flex';
+window.editCoupon=(code)=>{
+  db.ref('coupons/'+code).once('value').then(s=>{
+    const v=s.val(); if(!v)return;
+    document.getElementById('coup-old-code').value=code;
+    document.getElementById('coup-code').value=v.code;
+    document.getElementById('coup-val').value=v.discount;
+    document.getElementById('coup-type').value=v.type||'percent';
+    if(v.startTime) document.getElementById('coup-start').value=new Date(v.startTime-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
+    if(v.endTime)   document.getElementById('coup-end').value=new Date(v.endTime-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
+    document.getElementById('coup-lim-user').value=v.limitPerUser||'';
+    document.getElementById('coup-lim-total').value=v.limitTotal||'';
+    document.getElementById('coup-form-title').textContent='✏️ EDIT: '+code;
+    document.querySelector('#btn-save-coup .btn-text').textContent='UPDATE COUPON';
+    document.getElementById('btn-cancel-coup').style.display='flex';
   });
 };
-window.resetCouponForm = () => {
-  ['old-coup-code','coup-code','coup-val','coup-start','coup-end','coup-limit-user','coup-limit-total'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('coup-type').value = 'percent';
-  document.getElementById('coup-title').textContent = 'CREATE COUPON';
-  document.querySelector('#btn-save-coup span').textContent = 'SAVE COUPON';
-  document.getElementById('btn-cancel-coup').style.display = 'none';
+window.resetCouponForm=()=>{
+  ['coup-old-code','coup-code','coup-val','coup-start','coup-end','coup-lim-user','coup-lim-total'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('coup-type').value='percent';
+  document.getElementById('coup-form-title').textContent='🎟️ CREATE COUPON';
+  document.querySelector('#btn-save-coup .btn-text').textContent='💾 SAVE COUPON';
+  document.getElementById('btn-cancel-coup').style.display='none';
 };
-window.delCoupon = (code) => { if(confirm('Delete '+code+'?')) db.ref('coupons/'+code).remove().then(()=>showToast('Coupon Deleted')); };
+window.deleteCoupon=(code)=>{if(confirm('Delete '+code+'?'))db.ref('coupons/'+code).remove().then(()=>toast('Coupon deleted'));};
 
 // ================================================================
-// SETTINGS / META
+// SETTINGS / META SAVE
 // ================================================================
-window.saveMeta = (btn, type) => {
-  btn.querySelector('span').textContent = 'Saving...'; btn.disabled = true;
-  let d = {};
-  if(type==='payment') d = { keyId: document.getElementById('rzp-key').value, taxValue: document.getElementById('s-tax-val').value, taxType: document.getElementById('s-tax-type').value };
-  else if(type==='brand')    d = { name: document.getElementById('s-name').value, headerLogoUrl: document.getElementById('s-logo').value, heroImageUrl: document.getElementById('s-hero').value, faviconUrl: document.getElementById('s-fav').value };
-  else if(type==='contact')  d = { message: document.getElementById('con-msg').value, whatsapp: document.getElementById('s-wa').value, email: document.getElementById('s-email').value, hours: document.getElementById('s-hours').value, address: document.getElementById('s-add').value, instagram: document.getElementById('s-insta').value, youtube: document.getElementById('s-yt').value };
-  else if(type==='policies') d = { terms: document.getElementById('pol-terms').value, privacy: document.getElementById('pol-privacy').value, refund: document.getElementById('pol-refund').value, about: document.getElementById('pol-about').value };
+window.saveMeta=(btn,type)=>{
+  btn.querySelector('.btn-text').textContent='Saving...'; btn.disabled=true;
+  let d={};
+  if(type==='payment') d={keyId:document.getElementById('set-rzp-key').value,taxValue:document.getElementById('set-tax-val').value,taxType:document.getElementById('set-tax-type').value};
+  else if(type==='brand') d={name:document.getElementById('set-name').value,headerLogoUrl:document.getElementById('set-hlogo').value,heroImageUrl:document.getElementById('set-hero').value,footerLogoUrl:document.getElementById('set-flogo').value,faviconUrl:document.getElementById('set-fav').value};
+  else if(type==='contact') d={whatsapp:document.getElementById('set-wa').value,email:document.getElementById('set-email').value,hours:document.getElementById('set-hours').value,address:document.getElementById('set-address').value,instagram:document.getElementById('set-insta').value,youtube:document.getElementById('set-yt').value,message:document.getElementById('set-welcome').value};
+  else if(type==='policies') d={terms:document.getElementById('set-terms').value,privacy:document.getElementById('set-privacy').value,refund:document.getElementById('set-refund').value,about:document.getElementById('set-about').value};
+  else if(type==='app') d={url:document.getElementById('set-app-url').value};
   db.ref('meta/'+type).update(d)
-    .then(()=>{ showToast('Saved! ✅'); btn.querySelector('span').textContent='SAVED ✅'; setTimeout(()=>{btn.querySelector('span').textContent='SAVE '+type.toUpperCase();btn.disabled=false;},2000); })
-    .catch(e=>{ showToast(e.message,'error'); btn.querySelector('span').textContent='SAVE';btn.disabled=false; });
+    .then(()=>{toast('Saved ✅');btn.querySelector('.btn-text').textContent='✅ SAVED';setTimeout(()=>{btn.querySelector('.btn-text').textContent='💾 SAVE '+type.toUpperCase();btn.disabled=false;},2500);})
+    .catch(er=>{toast(er.message,'error');btn.querySelector('.btn-text').textContent='💾 SAVE';btn.disabled=false;});
 };
 
 // ================================================================
 // SECURITY LOGS
 // ================================================================
-window.clearLogs = () => { if(confirm('Clear all logs?')) db.ref('security_logs').remove().then(()=>showToast('Logs cleared')); };
+window.clearLogs=()=>{if(confirm('Clear all security logs?'))db.ref('security_logs').remove().then(()=>toast('Logs cleared'));};
 
 // ================================================================
-// INIT DATA — Firebase listeners
+// INIT — Firebase real-time listeners
 // ================================================================
-function initData() {
+function initData(){
   // Products
-  db.ref('products').on('value', s => {
-    const l = document.getElementById('list-products'); l.innerHTML = '';
-    const sel = document.getElementById('p-cat');
-    let count = 0;
-    if(s.exists()) {
-      s.forEach(c => {
-        const p = c.val(); count++;
-        l.innerHTML += `<div class="list-item">
-          <div style="flex:1;min-width:0;">
-            <div style="font-weight:bold;color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.title}</div>
-            <div style="font-size:0.75rem;color:#666;">${p.category||'No cat'} | <s style="color:#888;">₹${p.realPrice||0}</s> → <b>₹${p.discountedPrice||0}</b></div>
+  db.ref('products').on('value',s=>{
+    const l=document.getElementById('list-products'); l.innerHTML='';
+    const sel=document.getElementById('p-cat');
+    let count=0;
+    if(s.exists()) s.forEach(c=>{
+      const p=c.val(); count++;
+      l.innerHTML+=`<div class="list-item">
+        <div style="display:flex;gap:10px;align-items:center;flex:1;min-width:0;">
+          ${p.images?.[0]?`<img src="${p.images[0]}" style="width:50px;height:50px;object-fit:cover;border-radius:6px;flex-shrink:0;border:1px solid var(--border);">`:'<div style="width:50px;height:50px;background:var(--surface2);border-radius:6px;flex-shrink:0;"></div>'}
+          <div style="min-width:0;">
+            <div style="font-weight:700;color:var(--primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.title}</div>
+            <div style="font-size:.75rem;color:var(--muted);">${p.category||'No category'} | <s>₹${p.realPrice||0}</s> → <b>₹${p.discountedPrice||0}</b></div>
           </div>
-          <div class="action-row">
-            <button class="btn btn-sm" onclick="editProd('${c.key}')">✏️ Edit</button>
-            <button class="btn btn-sm btn-danger" onclick="delProd('${c.key}')">🗑️</button>
-          </div>
-        </div>`;
-      });
-    }
-    document.getElementById('stat-prd').textContent = count;
-    // Rebuild category dropdown
-    const curVal = sel.value;
-    sel.innerHTML = '<option value="">Select Category</option>';
-    // Will be filled by categories listener
+        </div>
+        <div class="action-row">
+          <button class="btn btn-ghost btn-sm" onclick="editProduct('${c.key}')">✏️ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="delProduct('${c.key}')">🗑️</button>
+        </div>
+      </div>`;
+    });
+    document.getElementById('s-prd').textContent=count;
   });
 
   // Categories
-  db.ref('categories').on('value', s => {
-    const l = document.getElementById('list-categories'); l.innerHTML = '';
-    const sel = document.getElementById('p-cat');
-    sel.innerHTML = '<option value="">Select Category</option>';
-    if(s.exists()) s.forEach(c => {
-      const v = c.val();
-      l.innerHTML += `<div class="list-item">
-        <div style="display:flex;align-items:center;gap:10px;">
-          ${v.image ? `<img src="${v.image}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #333;">` : ''}
+  db.ref('categories').on('value',s=>{
+    const l=document.getElementById('list-categories'); l.innerHTML='';
+    const sel=document.getElementById('p-cat');
+    sel.innerHTML='<option value="">Select Category *</option>';
+    if(s.exists()) s.forEach(c=>{
+      const v=c.val();
+      l.innerHTML+=`<div class="list-item">
+        <div style="display:flex;gap:10px;align-items:center;">
+          ${v.image?`<img src="${v.image}" style="width:44px;height:44px;object-fit:cover;border-radius:50%;border:1px solid var(--border);">`:''}
           <b>${v.name}</b>
         </div>
         <div class="action-row">
-          <button class="btn btn-sm" onclick="editCat('${c.key}')">✏️</button>
-          <button class="btn btn-sm btn-danger" onclick="delCat('${c.key}')">🗑️</button>
+          <button class="btn btn-ghost btn-sm" onclick="editCategory('${c.key}')">✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="delCategory('${c.key}')">🗑️</button>
         </div>
       </div>`;
-      sel.innerHTML += `<option value="${v.name}">${v.name}</option>`;
+      sel.innerHTML+=`<option value="${v.name}">${v.name}</option>`;
     });
   });
 
   // Orders
-  db.ref('orders').on('value', s => {
-    allOrdersData = [];
-    let revenue = 0;
-    if(s.exists()) s.forEach(c => { const o={key:c.key,...c.val()}; allOrdersData.push(o); revenue += parseInt(o.price)||0; });
-    document.getElementById('stat-rev').textContent = '₹' + revenue.toLocaleString('en-IN');
-    document.getElementById('stat-ord').textContent = allOrdersData.length;
+  db.ref('orders').on('value',s=>{
+    allOrders=[]; let rev=0;
+    if(s.exists()) s.forEach(c=>{const o={key:c.key,...c.val()};allOrders.push(o);rev+=parseInt(o.price)||0;});
+    document.getElementById('s-rev').textContent='₹'+rev.toLocaleString('en-IN');
+    document.getElementById('s-ord').textContent=allOrders.length;
   });
 
   // New order real-time dot
-  db.ref('orders').limitToLast(1).on('child_added', snap => {
-    const o = snap.val();
-    if(o && Date.now() - (o.date||0) < 60000) {
-      document.getElementById('new-order-dot').classList.remove('hidden');
-      showToast(`🛒 New order: ${o.item||'Product'} — ₹${o.price||0}`, 'info');
-      setTimeout(()=>document.getElementById('new-order-dot').classList.add('hidden'), 8000);
+  db.ref('orders').limitToLast(1).on('child_added',snap=>{
+    const o=snap.val();
+    if(o&&Date.now()-(o.date||0)<60000){
+      const dot=document.getElementById('live-dot');
+      dot.style.display='block';
+      toast(`🛒 New Order: ${o.item||'Product'} — ₹${o.price||0}`,'info');
+      setTimeout(()=>dot.style.display='none',10000);
     }
   });
 
   // Users
-  db.ref('users').on('value', s => {
-    allUsersData = {};
-    if(s.exists()) { s.forEach(c => allUsersData[c.key] = c.val()); filterUsers(''); }
-    else document.getElementById('list-users').innerHTML = '<p style="text-align:center;color:#555;padding:20px;">No users yet.</p>';
-    document.getElementById('stat-usr').textContent = Object.keys(allUsersData).length;
+  db.ref('users').on('value',s=>{
+    allUsers={};
+    if(s.exists()) s.forEach(c=>allUsers[c.key]=c.val());
+    filterUsers('');
+    document.getElementById('s-usr').textContent=Object.keys(allUsers).length;
   });
 
   // Coupons
-  db.ref('coupons').on('value', s => {
-    const l = document.getElementById('list-coupons'); l.innerHTML = '';
-    if(s.exists()) {
-      s.forEach(c => {
-        const v = c.val();
-        const disc = v.type==='fixed' ? `₹${v.discount}` : `${v.discount}%`;
-        const exp  = v.endTime ? new Date(v.endTime).toLocaleDateString('en-IN') : 'No Expiry';
-        const now  = Date.now();
-        const active = (!v.endTime || v.endTime > now) && (!v.startTime || v.startTime <= now);
-        l.innerHTML += `<div class="list-item">
+  db.ref('coupons').on('value',s=>{
+    const l=document.getElementById('list-coupons'); l.innerHTML='';
+    if(!s.exists()){l.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);">No coupons yet.</div>';return;}
+    s.forEach(c=>{
+      const v=c.val();
+      const disc=v.type==='fixed'?`₹${v.discount}`:`${v.discount}%`;
+      const now=Date.now();
+      const active=(!v.endTime||v.endTime>now)&&(!v.startTime||v.startTime<=now);
+      const expiry=v.endTime?new Date(v.endTime).toLocaleDateString('en-IN'):'No expiry';
+      const used=v.usedCount||0;
+      const usedPct=v.limitTotal?Math.min(100,used/v.limitTotal*100):0;
+      l.innerHTML+=`<div class="list-item" style="flex-direction:column;align-items:stretch;gap:8px;">
+        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:start;">
           <div>
-            <b style="color:var(--primary);font-size:1.05rem;">${v.code}</b>
-            <span style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:4px;font-size:0.8rem;margin-left:6px;font-weight:bold;">${disc} OFF</span>
-            <span style="margin-left:6px;font-size:0.75rem;color:${active?'#00e676':'#ff2a6d'};">${active?'● Active':'● Expired'}</span>
-            <div class="coup-meta">Per user: ${v.limitPerUser||'∞'} | Total: ${v.limitTotal||'∞'} | Expires: ${exp}</div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span class="${active?'dot-active':'dot-inactive'}"></span>
+              <b style="color:var(--primary);font-size:1.05rem;">${v.code}</b>
+              <span style="background:rgba(255,255,255,.08);padding:2px 9px;border-radius:20px;font-size:.78rem;font-weight:700;">${disc} OFF</span>
+            </div>
+            <div style="font-size:.75rem;color:var(--muted);margin-top:5px;">
+              Per user: ${v.limitPerUser||'∞'} | Total: ${v.limitTotal||'∞'} | Used: ${used} | Expires: ${expiry}
+            </div>
+            ${v.limitTotal?`<div class="prog-wrap"><div class="prog-bar" style="width:${usedPct}%"></div></div>`:''}
           </div>
           <div class="action-row">
-            <button class="btn btn-sm" onclick="editCoupon('${c.key}')">✏️</button>
-            <button class="btn btn-sm btn-danger" onclick="delCoupon('${c.key}')">🗑️</button>
+            <button class="btn btn-ghost btn-sm" onclick="editCoupon('${c.key}')">✏️</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteCoupon('${c.key}')">🗑️</button>
           </div>
-        </div>`;
-      });
-    } else { l.innerHTML='<p style="text-align:center;color:#555;padding:20px;">No coupons yet.</p>'; }
-  });
-
-  // Security logs
-  db.ref('security_logs').limitToLast(20).on('value', s => {
-    const l = document.getElementById('list-security'); l.innerHTML = '';
-    const logs = []; s.forEach(c=>logs.push(c.val())); logs.reverse();
-    if(!logs.length) { l.innerHTML='<p style="text-align:center;color:#555;padding:20px;">No logs.</p>'; return; }
-    logs.forEach(log => {
-      l.innerHTML += `<div class="list-item" style="display:block;border-left:3px solid var(--danger);">
-        <strong style="color:var(--danger);">⚠️ ${log.error||'Alert'}</strong>
-        <div style="font-size:0.85rem;margin-top:4px;">${log.email||'Unknown'}</div>
-        <div style="font-size:0.7rem;color:#555;">${log.location||''} | ${new Date(log.timestamp||0).toLocaleString()}</div>
+        </div>
       </div>`;
     });
   });
 
-  // Settings — load saved values
-  db.ref('meta').once('value').then(s => {
-    const v = s.val(); if(!v) return;
-    if(v.payment) { document.getElementById('rzp-key').value=v.payment.keyId||''; document.getElementById('s-tax-val').value=v.payment.taxValue||''; document.getElementById('s-tax-type').value=v.payment.taxType||'percent'; }
-    if(v.brand)   { document.getElementById('s-name').value=v.brand.name||''; document.getElementById('s-logo').value=v.brand.headerLogoUrl||''; document.getElementById('s-hero').value=v.brand.heroImageUrl||''; document.getElementById('s-fav').value=v.brand.faviconUrl||''; if(v.brand.headerLogoUrl){const p=document.getElementById('prev-logo');p.src=v.brand.headerLogoUrl;p.style.display='block';} }
-    if(v.contact) { document.getElementById('s-wa').value=v.contact.whatsapp||''; document.getElementById('s-email').value=v.contact.email||''; document.getElementById('s-hours').value=v.contact.hours||''; document.getElementById('s-add').value=v.contact.address||''; document.getElementById('s-insta').value=v.contact.instagram||''; document.getElementById('s-yt').value=v.contact.youtube||''; document.getElementById('con-msg').value=v.contact.message||''; }
-    if(v.policies){ document.getElementById('pol-terms').value=v.policies.terms||''; document.getElementById('pol-privacy').value=v.policies.privacy||''; document.getElementById('pol-refund').value=v.policies.refund||''; document.getElementById('pol-about').value=v.policies.about||''; }
+  // Security logs
+  db.ref('security_logs').limitToLast(20).on('value',s=>{
+    const l=document.getElementById('list-security'); l.innerHTML='';
+    const logs=[]; s.forEach(c=>logs.push(c.val())); logs.reverse();
+    if(!logs.length){l.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);">No security events logged.</div>';return;}
+    logs.forEach(log=>{
+      l.innerHTML+=`<div class="list-item" style="display:block;border-left:3px solid var(--danger);">
+        <strong style="color:var(--danger);">⚠️ ${log.error||'Alert'}</strong>
+        <div style="font-size:.85rem;margin-top:4px;color:var(--text);">${log.email||'Unknown'}</div>
+        <div style="font-size:.72rem;color:var(--muted);">${log.location||''} • ${new Date(log.timestamp||0).toLocaleString()}</div>
+      </div>`;
+    });
+  });
+
+  // Settings pre-fill
+  db.ref('meta').once('value').then(s=>{
+    const v=s.val(); if(!v)return;
+    if(v.payment){document.getElementById('set-rzp-key').value=v.payment.keyId||'';document.getElementById('set-tax-val').value=v.payment.taxValue||'';document.getElementById('set-tax-type').value=v.payment.taxType||'percent';}
+    if(v.brand){
+      document.getElementById('set-name').value=v.brand.name||'';
+      document.getElementById('set-hlogo').value=v.brand.headerLogoUrl||'';
+      document.getElementById('set-hero').value=v.brand.heroImageUrl||'';
+      document.getElementById('set-flogo').value=v.brand.footerLogoUrl||'';
+      document.getElementById('set-fav').value=v.brand.faviconUrl||'';
+      if(v.brand.headerLogoUrl){const p=document.getElementById('prev-hlogo');p.src=v.brand.headerLogoUrl;p.style.display='block';}
+      if(v.brand.heroImageUrl){const p=document.getElementById('prev-hero');p.src=v.brand.heroImageUrl;p.style.display='block';}
+    }
+    if(v.contact){
+      document.getElementById('set-wa').value=v.contact.whatsapp||'';
+      document.getElementById('set-email').value=v.contact.email||'';
+      document.getElementById('set-hours').value=v.contact.hours||'';
+      document.getElementById('set-address').value=v.contact.address||'';
+      document.getElementById('set-insta').value=v.contact.instagram||'';
+      document.getElementById('set-yt').value=v.contact.youtube||'';
+      document.getElementById('set-welcome').value=v.contact.message||'';
+    }
+    if(v.policies){
+      document.getElementById('set-terms').value=v.policies.terms||'';
+      document.getElementById('set-privacy').value=v.policies.privacy||'';
+      document.getElementById('set-refund').value=v.policies.refund||'';
+      document.getElementById('set-about').value=v.policies.about||'';
+    }
+    if(v.app) document.getElementById('set-app-url').value=v.app.url||'';
   });
 }
 </script>
