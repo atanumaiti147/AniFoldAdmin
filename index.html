@@ -336,7 +336,8 @@ const firebaseConfig = {
 try { firebase.initializeApp(firebaseConfig); } catch(e){}
 const auth = firebase.auth();
 const db = firebase.database();
-const IMGBB_KEY = "f42d3a55ec157019f59f8637336fa6e6";
+// Cloudinary via PHP backend (ImgBB hataya — slow tha)
+const CLOUDINARY_UPLOAD_URL = "https://craftyam.anifold.shop/create_order.php?action=upload_image";
 let currentProductImages = [];
 let allOrdersData = [];
 let allUsersData = {};
@@ -399,22 +400,46 @@ window.showTab = (t, e) => {
 // IMAGE UPLOAD
 window.uploadImage = async (input, urlId, prevId, boxId) => {
   if(!input.files[0]) return;
-  const f = new FormData(); f.append("image", input.files[0]);
+  const box = document.getElementById(boxId);
+  if(box) box.innerText = '⏳ Uploading...';
+  const f = new FormData();
+  f.append("image", input.files[0]);
+  f.append("folder", "anifold-brand");
   try {
-    const req = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`,{method:'POST',body:f});
+    const req = await fetch(CLOUDINARY_UPLOAD_URL, {method:'POST', body:f});
     const res = await req.json();
-    if(res.success) { document.getElementById(urlId).value=res.data.url; const p=document.getElementById(prevId); if(p){p.src=res.data.url;p.style.display='block';} showToast("Image Uploaded!"); }
-  } catch(e) { showToast("Upload Failed",'error'); }
+    if(res.success && res.url) {
+      document.getElementById(urlId).value = res.url;
+      const p = document.getElementById(prevId);
+      if(p){ p.src=res.url; p.style.display='block'; }
+      if(box) box.innerText = '✅ Uploaded!';
+      showToast("Image Uploaded! (" + (res.format||'webp') + ")", 'success');
+    } else { throw new Error(res.error||'Upload failed'); }
+  } catch(e) {
+    showToast("Upload Failed: " + e.message, 'error');
+    if(box) box.innerText = '📸 Upload';
+  }
+  setTimeout(()=>{ if(box) box.innerText='📸 Upload'; },3000);
 };
 window.uploadProductImage = async (input) => {
   if(!input.files[0]) return;
   if(currentProductImages.length>=15) { showToast("Max 15 Images!",'error'); return; }
-  const f = new FormData(); f.append("image", input.files[0]);
+  const box = document.getElementById('p-upload-btn');
+  if(box){ box.innerText='⏳ Uploading...'; box.style.pointerEvents='none'; }
+  const f = new FormData();
+  f.append("image", input.files[0]);
+  f.append("folder", "anifold-products");
   try {
-    const req = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`,{method:'POST',body:f});
+    const req = await fetch(CLOUDINARY_UPLOAD_URL, {method:'POST', body:f});
     const res = await req.json();
-    if(res.success) { currentProductImages.push(res.data.url); renderProductPreviews(); showToast("Image Added"); }
-  } catch(e) { showToast("Upload Failed",'error'); }
+    if(res.success && res.url) {
+      currentProductImages.push(res.url);
+      renderProductPreviews();
+      showToast("Image Added! (" + (res.format||'webp') + " • " + (res.width||0) + "px)", 'success');
+    } else { throw new Error(res.error||'Upload failed'); }
+  } catch(e) { showToast("Upload Failed: " + e.message, 'error'); }
+  if(box){ box.innerText='📸 ADD IMAGE'; box.style.pointerEvents='auto'; }
+  input.value='';
 };
 function renderProductPreviews() {
   const g=document.getElementById('p-img-grid'); g.innerHTML='';
