@@ -12,29 +12,25 @@ if (!h.includes(allowedDomain) && h !== "localhost" && h !== "127.0.0.1") {
   window.location.href = "about:blank";
   throw new Error("ACCESS DENIED");
 }
+// Right click + keyboard shortcuts block (F12 allowed for admin debugging)
 document.addEventListener('contextmenu', e => e.preventDefault());
 document.onkeydown = function(e) {
-  if (e.keyCode == 123) return false;
   if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false;
   if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false;
   if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false;
   if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false;
 }
-setInterval(() => {
-  const t = Date.now(); debugger;
-  if (Date.now() - t > 100) window.location.href = "about:blank";
-}, 1000);
+// NOTE: Anti-debugger setInterval HATA DIYA — wo login ko block kar raha tha
 </script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-:root { --bg: #09090b; --glass: rgba(255,255,255,0.05); --border: rgba(255,255,255,0.1); --primary: #00f3ff; --text: #e4e4e7; --danger: #ff2a6d; --warn: #ff9800; --success: #00e676; --purple: #a855f7; }
+:root { --bg: #09090b; --glass: rgba(255,255,255,0.05); --border: rgba(255,255,255,0.1); --primary: #00f3ff; --text: #e4e4e7; --danger: #ff2a6d; --warn: #ff9800; --success: #00e676; }
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', monospace; user-select: none; }
 body { background: var(--bg); color: var(--text); padding-bottom: 80px; }
 .hidden { display: none !important; }
-.container { max-width: 900px; margin: 0 auto; padding: 20px; }
+.container { max-width: 800px; margin: 0 auto; padding: 20px; }
 .card { background: var(--glass); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; backdrop-filter: blur(10px); }
 input, textarea, select { width: 100%; background: #000; border: 1px solid #333; padding: 12px; color: var(--primary); margin-bottom: 10px; border-radius: 6px; outline: none; font-family: monospace; }
 label { display: block; margin-top: 15px; font-size: 0.8rem; color: #aaa; margin-bottom: 5px; font-weight: bold; text-transform: uppercase; }
@@ -43,12 +39,10 @@ label { display: block; margin-top: 15px; font-size: 0.8rem; color: #aaa; margin
 .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
 .btn-danger { background: var(--danger); color: white; }
 .btn-warn { background: var(--warn); color: black; }
-.btn-purple { background: var(--purple); color: white; }
-.btn-sm { padding: 6px 14px; font-size: 0.75rem; width: auto; }
 .loader { border: 3px solid rgba(0,0,0,0.1); border-top: 3px solid #000; border-radius: 50%; width: 18px; height: 18px; animation: spin 0.8s linear infinite; display: none; }
 .btn.loading .loader { display: block; }
 .btn.loading span { display: none; }
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
 .nav-tabs { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 5px; scrollbar-width: none; }
 .nav-tabs::-webkit-scrollbar { display: none; }
 .tab-btn { background: #111; color: #666; flex: 1; border: 1px solid #333; padding: 9px 6px; cursor: pointer; white-space: nowrap; border-radius: 4px; font-size: 0.75rem; min-width: fit-content; }
@@ -61,36 +55,18 @@ label { display: block; margin-top: 15px; font-size: 0.8rem; color: #aaa; margin
 .image-wrapper { position: relative; width: 60px; height: 60px; border: 1px solid #333; border-radius: 4px; }
 .image-thumb { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
 .remove-img { position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.user-email { font-weight: bold; font-size: 0.9rem; color: #fff; }
+.user-details { font-size: 0.8rem; color: #aaa; margin-top: 2px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.coup-meta { font-size: 0.75rem; color: #888; margin-top: 4px; line-height: 1.4; }
 .action-row { display: flex; gap: 5px; flex-wrap: wrap; }
-.stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
-@media (min-width: 600px) { .stat-grid { grid-template-columns: repeat(4, 1fr); } }
-.stat-card { background: var(--glass); border: 1px solid var(--border); border-radius: 10px; padding: 15px; text-align: center; }
-.stat-val { font-size: 1.8rem; font-weight: bold; color: var(--primary); }
-.stat-label { font-size: 0.75rem; color: #aaa; text-transform: uppercase; margin-top: 5px; }
-.badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; }
-.badge-pending { background: #ff9800; color: #000; }
-.badge-completed { background: #00e676; color: #000; }
-.badge-refunded { background: #ff2a6d; color: #fff; }
-.review-item { background: rgba(255,255,255,0.02); border: 1px solid #333; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
-.stars { color: #facc15; font-size: 1rem; }
-.notif-form { border: 1px solid var(--purple); }
-.flash-form { border: 1px solid #ff9800; }
-.secure-link-row { font-size: 0.75rem; color: #aaa; margin-top: 4px; }
-.progress-bar-wrap { background: #1a1a1a; border-radius: 4px; height: 6px; margin-top: 8px; }
-.progress-bar { height: 6px; border-radius: 4px; background: var(--primary); transition: width 0.5s; }
+#error-msg { color: var(--danger); font-size: 0.85rem; margin-top: 10px; min-height: 20px; text-align: center; }
 #toast-container { position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px; }
 .toast { min-width: 250px; padding: 15px 20px; border-radius: 8px; color: white; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.3); animation: slideIn 0.3s ease-out; display: flex; align-items: center; gap: 10px; font-size: 0.9rem; }
 .toast.success { background: linear-gradient(45deg, #00e676, #00c853); border-left: 5px solid #00600f; }
 .toast.error { background: linear-gradient(45deg, #ff5252, #d50000); border-left: 5px solid #8a0000; }
-.toast.info { background: linear-gradient(45deg, #00b0ff, #0091ea); border-left: 5px solid #01579b; }
-@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-@keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
-canvas { max-height: 260px; }
-.coup-meta { font-size: 0.75rem; color: #888; margin-top: 4px; line-height: 1.4; }
-.user-email { font-weight: bold; font-size: 0.9rem; color: #fff; }
-.user-details { font-size: 0.8rem; color: #aaa; margin-top: 2px; }
+@keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+@keyframes fadeOut { from{opacity:1} to{opacity:0} }
 </style>
 </head>
 <body>
@@ -100,61 +76,32 @@ canvas { max-height: 260px; }
 <div id="login-screen" style="height:100vh;display:flex;align-items:center;justify-content:center;">
   <div class="card" style="width:350px;text-align:center;">
     <h2 style="color:var(--primary);margin-bottom:20px;">⚡ ADMIN LOGIN</h2>
-    <input type="email" id="login-email" placeholder="Admin Email">
-    <input type="password" id="login-password" placeholder="Passkey">
+    <input type="email" id="login-email" placeholder="Admin Email" onkeydown="if(event.key==='Enter')doLogin()">
+    <input type="password" id="login-password" placeholder="Passkey" onkeydown="if(event.key==='Enter')doLogin()">
     <button class="btn" id="btn-login" onclick="doLogin()"><span>AUTHENTICATE</span><div class="loader"></div></button>
+    <div id="error-msg"></div>
   </div>
 </div>
 
 <!-- DASHBOARD -->
 <div id="dashboard" class="hidden container">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-    <h3 style="color:var(--primary)">⚡ COMMAND CENTER</h3>
-    <div style="display:flex;gap:10px;align-items:center;">
-      <span id="notif-dot" style="width:10px;height:10px;background:#00e676;border-radius:50%;display:none;animation:pulse 1.5s infinite;"></span>
-      <button class="btn-danger btn btn-sm" onclick="doLogout()"><span>EXIT</span></button>
-    </div>
+    <h3 style="color:var(--primary);">⚡ COMMAND CENTER</h3>
+    <button class="btn btn-danger" style="width:auto;padding:6px 16px;font-size:0.8rem;" onclick="doLogout()"><span>EXIT</span></button>
   </div>
 
   <div class="nav-tabs">
-    <button class="tab-btn active" onclick="showTab('analytics','this')">📊 ANALYTICS</button>
-    <button class="tab-btn" onclick="showTab('products','this')">📦 PRODUCTS</button>
-    <button class="tab-btn" onclick="showTab('categories','this')">🗂️ CATEGORIES</button>
-    <button class="tab-btn" onclick="showTab('orders','this')">🛒 ORDERS</button>
-    <button class="tab-btn" onclick="showTab('users','this')">👥 USERS</button>
-    <button class="tab-btn" onclick="showTab('reviews','this')">⭐ REVIEWS</button>
-    <button class="tab-btn" onclick="showTab('flash','this')" style="color:#ff9800;border-color:#ff9800;">⚡ FLASH SALE</button>
-    <button class="tab-btn" onclick="showTab('notifications','this')" style="color:var(--purple);border-color:var(--purple);">🔔 NOTIFY</button>
-    <button class="tab-btn" onclick="showTab('secure','this')" style="color:#00e676;border-color:#00e676;">🔐 LINKS</button>
-    <button class="tab-btn" onclick="showTab('coupons','this')" style="color:#00ff00;border-color:#00ff00;">🎟️ COUPONS</button>
-    <button class="tab-btn" onclick="showTab('settings','this')">⚙️ SETTINGS</button>
-    <button class="tab-btn" onclick="showTab('security','this')" style="color:var(--danger);border-color:var(--danger);">🛡️ SECURITY</button>
+    <button class="tab-btn active" onclick="showTab('products',event)">📦 PRODUCTS</button>
+    <button class="tab-btn" onclick="showTab('categories',event)">🗂️ CATEGORIES</button>
+    <button class="tab-btn" onclick="showTab('users',event)">👥 USERS</button>
+    <button class="tab-btn" onclick="showTab('orders',event)">🛒 ORDERS</button>
+    <button class="tab-btn" onclick="showTab('settings',event)">⚙️ SETTINGS</button>
+    <button class="tab-btn" onclick="showTab('coupons',event)" style="color:#00ff00;border-color:#00ff00;">🎟️ COUPONS</button>
+    <button class="tab-btn" onclick="showTab('security',event)" style="color:var(--danger);border-color:var(--danger);">🛡️ SECURITY</button>
   </div>
 
-  <!-- ===== ANALYTICS TAB ===== -->
-  <div id="tab-analytics">
-    <div class="stat-grid" id="stat-grid">
-      <div class="stat-card"><div class="stat-val" id="stat-revenue">₹0</div><div class="stat-label">Total Revenue</div></div>
-      <div class="stat-card"><div class="stat-val" id="stat-orders">0</div><div class="stat-label">Total Orders</div></div>
-      <div class="stat-card"><div class="stat-val" id="stat-users">0</div><div class="stat-label">Users</div></div>
-      <div class="stat-card"><div class="stat-val" id="stat-products">0</div><div class="stat-label">Products</div></div>
-    </div>
-    <div class="card">
-      <h4 style="margin-bottom:15px;color:var(--primary);">Revenue — Last 30 Days</h4>
-      <canvas id="revenueChart"></canvas>
-    </div>
-    <div class="card">
-      <h4 style="margin-bottom:15px;color:var(--primary);">Orders Per Day — Last 14 Days</h4>
-      <canvas id="ordersChart"></canvas>
-    </div>
-    <div class="card">
-      <h4 style="margin-bottom:15px;color:var(--primary);">Top 5 Products by Sales</h4>
-      <canvas id="topProductsChart"></canvas>
-    </div>
-  </div>
-
-  <!-- ===== PRODUCTS TAB ===== -->
-  <div id="tab-products" class="hidden">
+  <!-- PRODUCTS TAB -->
+  <div id="tab-products">
     <div class="card">
       <h4>PRODUCT EDITOR</h4>
       <input type="hidden" id="p-id">
@@ -162,17 +109,13 @@ canvas { max-height: 260px; }
       <select id="p-cat"><option value="">Select Category</option></select>
       <label>Images (Max 15)</label>
       <div class="image-grid" id="p-img-grid"></div>
-      <div class="upload-box" onclick="document.getElementById('p-file').click()">📸 ADD IMAGE</div>
-      <input type="file" id="p-file" hidden onchange="cloudinary-patch.js(this)">
-      <div class="grid-2">
+      <div class="upload-box" id="p-upload-btn" onclick="document.getElementById('p-file').click()">📸 ADD IMAGE</div>
+      <input type="file" id="p-file" hidden onchange="uploadProductImage(this)">
+      <div style="display:flex;gap:10px;">
         <input type="number" id="p-real" placeholder="Real Price">
         <input type="number" id="p-disc" placeholder="Discounted Price">
       </div>
       <input type="text" id="p-dl" placeholder="Secret Download Link" style="border-color:#00ff00">
-      <div class="grid-2">
-        <input type="number" id="p-dl-expiry" placeholder="Download Expiry (hours, 0=never)" style="border-color:#ff9800">
-        <input type="number" id="p-dl-uses" placeholder="Max Download Uses (0=unlimited)" style="border-color:#ff9800">
-      </div>
       <textarea id="p-desc" rows="3" placeholder="Description"></textarea>
       <button class="btn" id="btn-save-p" onclick="saveProduct()"><span>SAVE PRODUCT</span><div class="loader"></div></button>
       <button class="btn" style="background:#333;color:#fff;margin-top:5px;" onclick="clearP()">CLEAR FORM</button>
@@ -180,14 +123,14 @@ canvas { max-height: 260px; }
     <div id="list-products"></div>
   </div>
 
-  <!-- ===== CATEGORIES TAB ===== -->
+  <!-- CATEGORIES TAB -->
   <div id="tab-categories" class="hidden">
     <div class="card">
       <h4>CATEGORY EDITOR</h4>
       <input type="hidden" id="c-id">
       <input type="text" id="c-name" placeholder="Category Name">
-      <div class="upload-box" onclick="document.getElementById('c-file').click()">📸 UPLOAD ICON</div>
-      <input type="file" id="c-file" hidden onchange="cloudinary-patch.js(this,'c-img','prev-c','c-up-btn')">
+      <div class="upload-box" id="c-up-btn" onclick="document.getElementById('c-file').click()">📸 UPLOAD ICON</div>
+      <input type="file" id="c-file" hidden onchange="uploadImage(this,'c-img','prev-c','c-up-btn')">
       <input type="text" id="c-img" placeholder="Icon URL">
       <img id="prev-c" class="img-preview">
       <button class="btn" id="btn-save-c" onclick="saveCategory()"><span>SAVE</span><div class="loader"></div></button>
@@ -196,157 +139,28 @@ canvas { max-height: 260px; }
     <div id="list-categories"></div>
   </div>
 
-  <!-- ===== ORDERS TAB ===== -->
-  <div id="tab-orders" class="hidden">
-    <div class="card">
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        <select id="order-filter" onchange="renderOrders()" style="width:auto;margin:0;">
-          <option value="all">All Orders</option>
-          <option value="pending">Pending</option>
-          <option value="completed">Completed</option>
-          <option value="refunded">Refunded</option>
-        </select>
-        <input type="text" id="order-search" placeholder="Search by email..." oninput="renderOrders()" style="width:auto;flex:1;margin:0;">
-      </div>
-    </div>
-    <div id="list-orders"></div>
-  </div>
-
-  <!-- ===== USERS TAB ===== -->
+  <!-- USERS TAB -->
   <div id="tab-users" class="hidden">
     <div class="card">
       <h4>USER DATABASE</h4>
-      <input type="text" id="user-search" placeholder="Search users..." oninput="filterUsers(this.value)" style="margin-bottom:0;">
+      <input type="text" id="user-search" placeholder="Search by email..." oninput="filterUsers(this.value)" style="margin-bottom:0;">
     </div>
     <div id="list-users"><p style="text-align:center;color:#666;">Loading users...</p></div>
   </div>
 
-  <!-- ===== REVIEWS TAB ===== -->
-  <div id="tab-reviews" class="hidden">
-    <div class="card">
-      <h4 style="color:#facc15;">⭐ PRODUCT REVIEWS</h4>
-      <p style="font-size:0.8rem;color:#aaa;">Manage customer reviews. Approve or delete before showing on site.</p>
-    </div>
-    <div id="list-reviews"><p style="text-align:center;color:#666;">Loading reviews...</p></div>
-  </div>
+  <!-- ORDERS TAB -->
+  <div id="tab-orders" class="hidden"><div id="list-orders"></div></div>
 
-  <!-- ===== FLASH SALE TAB ===== -->
-  <div id="tab-flash" class="hidden">
-    <div class="card flash-form">
-      <h4 style="color:#ff9800;">⚡ FLASH SALE MANAGER</h4>
-      <p style="font-size:0.8rem;color:#aaa;margin-bottom:10px;">Set a site-wide flash sale with countdown timer. Users will see the timer on the homepage.</p>
-      <label>Sale Title</label>
-      <input type="text" id="flash-title" placeholder="e.g. Mega Anime Sale!">
-      <label>Sale Start & End</label>
-      <div class="grid-2">
-        <input type="datetime-local" id="flash-start" style="color:#aaa;">
-        <input type="datetime-local" id="flash-end" style="color:#aaa;">
-      </div>
-      <label>Discount Type & Value</label>
-      <div class="grid-2">
-        <input type="number" id="flash-discount" placeholder="Discount Value (e.g. 20)">
-        <select id="flash-type"><option value="percent">Percent (%)</option><option value="fixed">Fixed (₹)</option></select>
-      </div>
-      <label>Banner Message</label>
-      <input type="text" id="flash-banner" placeholder="e.g. 🔥 FLASH SALE — 20% OFF ALL TEMPLATES!">
-      <div class="grid-2">
-        <button class="btn" id="btn-save-flash" onclick="saveFlashSale()"><span>ACTIVATE FLASH SALE</span><div class="loader"></div></button>
-        <button class="btn btn-danger" onclick="endFlashSale()"><span>END FLASH SALE</span></button>
-      </div>
-      <div id="flash-status" style="margin-top:15px;padding:10px;background:rgba(255,152,0,0.1);border-radius:6px;font-size:0.85rem;display:none;"></div>
-    </div>
-  </div>
-
-  <!-- ===== NOTIFICATIONS TAB ===== -->
-  <div id="tab-notifications" class="hidden">
-    <div class="card notif-form">
-      <h4 style="color:var(--purple);">🔔 PUSH NOTIFICATIONS</h4>
-      <p style="font-size:0.8rem;color:#aaa;margin-bottom:10px;">Send browser push notifications to all users who have subscribed.</p>
-      <label>Notification Title</label>
-      <input type="text" id="notif-title" placeholder="e.g. New Template Drop!">
-      <label>Message Body</label>
-      <textarea id="notif-body" rows="3" placeholder="e.g. Check out our new Naruto papercraft template!"></textarea>
-      <label>Click URL (optional)</label>
-      <input type="text" id="notif-url" placeholder="https://anifold.shop">
-      <label>Icon URL (optional)</label>
-      <input type="text" id="notif-icon" placeholder="https://...your logo url...">
-      <button class="btn btn-purple" id="btn-send-notif" onclick="sendPushNotification()"><span>📢 SEND TO ALL USERS</span><div class="loader"></div></button>
-    </div>
-    <div class="card" style="margin-top:10px;">
-      <h4 style="color:#aaa;">Notification History</h4>
-      <div id="notif-history"></div>
-    </div>
-    <div class="card">
-      <h4 style="color:#aaa;">Subscribed Users</h4>
-      <div id="notif-subscribers" style="font-size:0.85rem;color:#666;">Loading...</div>
-    </div>
-  </div>
-
-  <!-- ===== SECURE LINKS TAB ===== -->
-  <div id="tab-secure" class="hidden">
-    <div class="card" style="border-color:#00e676;">
-      <h4 style="color:#00e676;">🔐 SECURE DOWNLOAD LINKS</h4>
-      <p style="font-size:0.8rem;color:#aaa;margin-bottom:10px;">Generate time-limited, one-time download links for each order. These links expire and become invalid after use or time limit.</p>
-      <label>Select Product</label>
-      <select id="sec-product"><option value="">Select Product...</option></select>
-      <div class="grid-2">
-        <div>
-          <label>Expiry (hours, 0=never)</label>
-          <input type="number" id="sec-expiry" placeholder="e.g. 48" value="48">
-        </div>
-        <div>
-          <label>Max Uses (0=unlimited)</label>
-          <input type="number" id="sec-uses" placeholder="e.g. 1" value="1">
-        </div>
-      </div>
-      <label>Download URL</label>
-      <input type="text" id="sec-url" placeholder="Paste your Google Drive / Mega / S3 link here">
-      <button class="btn" style="background:#00e676;color:#000;" onclick="generateSecureLink()"><span>⚡ GENERATE SECURE LINK</span><div class="loader"></div></button>
-    </div>
-    <div class="card">
-      <h4 style="color:#aaa;margin-bottom:10px;">Active Secure Links</h4>
-      <div id="secure-links-list"></div>
-    </div>
-  </div>
-
-  <!-- ===== COUPONS TAB ===== -->
-  <div id="tab-coupons" class="hidden">
-    <div class="card" style="border-color:#00ff00;">
-      <h4 style="color:#00ff00;" id="coupon-form-title">CREATE COUPON</h4>
-      <input type="hidden" id="old-coup-code">
-      <div class="grid-2">
-        <input type="text" id="coup-code" placeholder="CODE" style="text-transform:uppercase;">
-        <div style="display:flex;gap:5px;">
-          <input type="number" id="coup-val" placeholder="Value">
-          <select id="coup-type" style="width:80px;"><option value="percent">%</option><option value="fixed">₹</option></select>
-        </div>
-      </div>
-      <div class="grid-2">
-        <input type="datetime-local" id="coup-start" style="color:#aaa;">
-        <input type="datetime-local" id="coup-end" style="color:#aaa;">
-      </div>
-      <div class="grid-2">
-        <input type="number" id="coup-limit-user" placeholder="Max uses per user">
-        <input type="number" id="coup-limit-total" placeholder="Total global limit">
-      </div>
-      <div style="display:flex;gap:10px;">
-        <button class="btn" id="btn-save-coup" onclick="saveCoupon()"><span>SAVE COUPON</span><div class="loader"></div></button>
-        <button class="btn btn-warn hidden" id="btn-cancel-coup" onclick="resetCouponForm()">CANCEL</button>
-      </div>
-    </div>
-    <div id="list-coupons"><p style="text-align:center;color:#666;">Loading...</p></div>
-  </div>
-
-  <!-- ===== SETTINGS TAB ===== -->
+  <!-- SETTINGS TAB -->
   <div id="tab-settings" class="hidden">
     <div class="card" style="border-color:#00ff00;">
       <h4 style="color:#00ff00;">APP & PAYMENT</h4>
       <label>Razorpay Key ID</label>
       <input type="text" id="rzp-key" placeholder="rzp_live_...">
       <label>Tax Settings</label>
-      <div class="grid-2">
+      <div style="display:flex;gap:5px;">
         <input type="number" id="s-tax-val" placeholder="Value (e.g. 1.89)" step="0.01" style="border-color:#ff9800;">
-        <select id="s-tax-type" style="border-color:#ff9800;"><option value="percent">Percent</option><option value="fixed">Fixed</option></select>
+        <select id="s-tax-type" style="width:100px;border-color:#ff9800;"><option value="percent">Percent</option><option value="fixed">Fixed</option></select>
       </div>
       <button class="btn" onclick="saveMeta(this,'payment')"><span>SAVE PAYMENT SETTINGS</span><div class="loader"></div></button>
       <label style="margin-top:20px;">App Link</label>
@@ -365,19 +179,19 @@ canvas { max-height: 260px; }
       <input type="text" id="s-name" placeholder="Store Name">
       <label>Header Logo</label>
       <div class="upload-box" onclick="document.getElementById('f-h').click()">📸 Upload</div>
-      <input type="file" id="f-h" hidden onchange="cloudinary-patch.js(this,'s-logo','prev-logo','uh')">
+      <input type="file" id="f-h" hidden onchange="uploadImage(this,'s-logo','prev-logo','up-h')">
       <input type="text" id="s-logo"><img id="prev-logo" class="img-preview">
       <label>Footer Logo</label>
       <div class="upload-box" onclick="document.getElementById('f-f').click()">📸 Upload</div>
-      <input type="file" id="f-f" hidden onchange="cloudinary-patch.js(this,'s-footer','prev-footer','uf')">
+      <input type="file" id="f-f" hidden onchange="uploadImage(this,'s-footer','prev-footer','up-f')">
       <input type="text" id="s-footer"><img id="prev-footer" class="img-preview">
       <label>Hero Image</label>
       <div class="upload-box" onclick="document.getElementById('f-hr').click()">📸 Upload</div>
-      <input type="file" id="f-hr" hidden onchange="cloudinary-patch.js(this,'s-hero','prev-hero','uhr')">
+      <input type="file" id="f-hr" hidden onchange="uploadImage(this,'s-hero','prev-hero','up-hr')">
       <input type="text" id="s-hero"><img id="prev-hero" class="img-preview">
       <label>Favicon</label>
       <div class="upload-box" onclick="document.getElementById('f-fav').click()">📸 Upload</div>
-      <input type="file" id="f-fav" hidden onchange="cloudinary-patch.js(this,'s-fav','prev-fav','ufav')">
+      <input type="file" id="f-fav" hidden onchange="uploadImage(this,'s-fav','prev-fav','up-fav')">
       <input type="text" id="s-fav"><img id="prev-fav" class="img-preview">
       <button class="btn" onclick="saveMeta(this,'brand')"><span>UPDATE IDENTITY</span><div class="loader"></div></button>
     </div>
@@ -400,11 +214,43 @@ canvas { max-height: 260px; }
     </div>
   </div>
 
-  <!-- ===== SECURITY TAB ===== -->
+  <!-- COUPONS TAB -->
+  <div id="tab-coupons" class="hidden">
+    <div class="card" style="border-color:#00ff00;">
+      <h4 style="color:#00ff00;" id="coupon-form-title">CREATE COUPON</h4>
+      <input type="hidden" id="old-coup-code">
+      <label>Code & Value</label>
+      <div class="grid-2">
+        <input type="text" id="coup-code" placeholder="CODE" style="text-transform:uppercase;">
+        <div style="display:flex;gap:5px;">
+          <input type="number" id="coup-val" placeholder="Value">
+          <select id="coup-type" style="width:80px;"><option value="percent">%</option><option value="fixed">₹</option></select>
+        </div>
+      </div>
+      <label>Validity (Start - End)</label>
+      <div class="grid-2">
+        <input type="datetime-local" id="coup-start" style="color:#aaa;">
+        <input type="datetime-local" id="coup-end" style="color:#aaa;">
+      </div>
+      <label>Usage Limits</label>
+      <div class="grid-2">
+        <input type="number" id="coup-limit-user" placeholder="Max uses per user">
+        <input type="number" id="coup-limit-total" placeholder="Total global usage limit">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn" id="btn-save-coup" onclick="saveCoupon()"><span>SAVE COUPON</span><div class="loader"></div></button>
+        <button class="btn btn-warn hidden" id="btn-cancel-coup" onclick="resetCouponForm()">CANCEL</button>
+      </div>
+    </div>
+    <h4 style="margin-bottom:10px;color:#aaa;">ACTIVE COUPONS</h4>
+    <div id="list-coupons" style="padding-bottom:50px;"><p style="text-align:center;color:#666;">Loading coupons...</p></div>
+  </div>
+
+  <!-- SECURITY LOGS TAB -->
   <div id="tab-security" class="hidden">
     <div class="card" style="border-color:#ff3366;">
       <h4 style="color:#ff3366;">INTRUSION LOGS</h4>
-      <button class="btn btn-danger" onclick="clearLogs()">CLEAR ALL LOGS</button>
+      <button class="btn btn-danger" onclick="clearLogs()">CLEAR LOGS</button>
     </div>
     <div id="list-security"></div>
   </div>
@@ -420,38 +266,60 @@ const firebaseConfig = {
   messagingSenderId: "555175386696",
   appId: "1:555175386696:web:5d837cf1777f9fc01f827d"
 };
-try { firebase.initializeApp(firebaseConfig); } catch(e){}
-const auth = firebase.auth();
-const db = firebase.database();
+let auth, db;
+try { firebase.initializeApp(firebaseConfig); auth=firebase.auth(); db=firebase.database(); } catch(e){}
+
 const IMGBB_KEY = "f42d3a55ec157019f59f8637336fa6e6";
 let currentProductImages = [];
-let allOrdersData = [];
 let allUsersData = {};
-let revenueChartInst, ordersChartInst, topProductsChartInst;
 
 // ====== TOAST ======
 window.showToast = (msg, type='success') => {
-  const c = document.getElementById('toast-container');
-  const t = document.createElement('div');
-  t.className = `toast ${type}`;
-  t.innerHTML = `<span>${type==='success'?'✔':type==='info'?'ℹ':'✖'}</span> ${msg}`;
+  const c=document.getElementById('toast-container');
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  t.innerHTML=`<span>${type==='success'?'✔':'✖'}</span> ${msg}`;
   c.appendChild(t);
-  setTimeout(() => { t.style.animation='fadeOut 0.3s forwards'; setTimeout(()=>t.remove(),300); }, 3000);
+  setTimeout(()=>{t.style.animation='fadeOut 0.3s forwards';setTimeout(()=>t.remove(),300);},3000);
 };
 
-// ====== LOADING ======
 const toggleLoading = (id, on) => {
-  const b = document.getElementById(id);
-  if(b) { on ? b.classList.add('loading') : b.classList.remove('loading'); b.disabled = on; }
+  const b=document.getElementById(id);
+  if(b){if(on){b.classList.add('loading');b.disabled=true;}else{b.classList.remove('loading');b.disabled=false;}}
 };
 
-// ====== AUTH ======
+// ====== LOGIN — improved error messages ======
 window.doLogin = () => {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-password').value;
+  const errEl = document.getElementById('error-msg');
+  errEl.textContent = '';
+
+  if(!email || !pass) { errEl.textContent = '⚠️ Email aur password dono bharein'; return; }
+
   toggleLoading('btn-login', true);
-  auth.signInWithEmailAndPassword(document.getElementById('login-email').value, document.getElementById('login-password').value)
-    .catch(e => { showToast(e.message,'error'); toggleLoading('btn-login',false); });
+
+  auth.signInWithEmailAndPassword(email, pass)
+    .then(() => errEl.textContent = '')
+    .catch(e => {
+      // Firebase error codes → Hindi/English messages
+      const msgs = {
+        'auth/user-not-found':       '❌ Ye email registered nahi hai',
+        'auth/wrong-password':       '❌ Password galat hai',
+        'auth/invalid-email':        '❌ Email format sahi nahi',
+        'auth/user-disabled':        '❌ Account disabled hai',
+        'auth/too-many-requests':    '⚠️ Zyada attempts — thodi der baad try karein',
+        'auth/network-request-failed': '⚠️ Internet connection check karein',
+        'auth/unauthorized-domain':  '⚠️ Domain Firebase mein authorized nahi — Firebase Console → Authentication → Settings → Authorized Domains mein "craftyam.anifold.shop" add karein',
+        'auth/invalid-credential':   '❌ Email ya password galat hai',
+      };
+      errEl.textContent = msgs[e.code] || ('❌ ' + e.message);
+      toggleLoading('btn-login', false);
+    });
 };
+
 window.doLogout = () => auth.signOut().then(()=>location.reload());
+
 auth.onAuthStateChanged(u => {
   if(u) {
     document.getElementById('login-screen').classList.add('hidden');
@@ -464,403 +332,115 @@ auth.onAuthStateChanged(u => {
 });
 
 // ====== TAB SWITCHING ======
-window.showTab = (t) => {
-  ['analytics','products','categories','orders','settings','users','security','coupons','reviews','flash','notifications','secure'].forEach(x => document.getElementById('tab-'+x).classList.add('hidden'));
+window.showTab = (t, e) => {
+  ['products','categories','orders','settings','users','security','coupons'].forEach(x=>document.getElementById('tab-'+x).classList.add('hidden'));
   document.getElementById('tab-'+t).classList.remove('hidden');
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  event.target.classList.add('active');
-  if(t==='analytics') renderAnalytics();
-  if(t==='orders') renderOrders();
-  if(t==='reviews') loadReviews();
-  if(t==='secure') loadSecureLinks();
-  if(t==='notifications') loadNotifHistory();
-  if(t==='flash') loadFlashStatus();
+  if(e && e.target) e.target.classList.add('active');
 };
 
 // ====== IMAGE UPLOAD ======
-window.cloudinary-patch.js = async (input, urlId, prevId, boxId) => {
+window.uploadImage = async (input, urlId, prevId, boxId) => {
   if(!input.files[0]) return;
-  const f = new FormData(); f.append("image", input.files[0]);
+  const box = document.getElementById(boxId);
+  if(box) { const old=box.innerText; box.innerText='⏳...'; }
+  const f=new FormData(); f.append("image",input.files[0]);
   try {
-    const req = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`,{method:'POST',body:f});
-    const res = await req.json();
-    if(res.success) {
-      document.getElementById(urlId).value = res.data.url;
-      const p = document.getElementById(prevId);
-      if(p) { p.src = res.data.url; p.style.display='block'; }
+    const req=await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`,{method:'POST',body:f});
+    const res=await req.json();
+    if(res.success){
+      document.getElementById(urlId).value=res.data.url;
+      const p=document.getElementById(prevId);
+      if(p){p.src=res.data.url;p.style.display='block';}
+      if(box) box.innerText='✅';
       showToast("Image Uploaded!");
     }
-  } catch(e) { showToast("Upload Failed",'error'); }
+  } catch(e){showToast("Upload Failed",'error');}
+  setTimeout(()=>{if(box)box.innerText='📸 Upload';},2000);
 };
-window.cloudinary-patch.js = async (input) => {
+
+window.uploadProductImage = async (input) => {
   if(!input.files[0]) return;
-  if(currentProductImages.length>=15) { showToast("Max 15 Images!",'error'); return; }
-  const f = new FormData(); f.append("image", input.files[0]);
+  if(currentProductImages.length>=15){showToast("Max 15 Images!",'error');return;}
+  const box=document.getElementById('p-upload-btn');
+  box.innerText='⏳...';
+  const f=new FormData(); f.append("image",input.files[0]);
   try {
-    const req = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`,{method:'POST',body:f});
-    const res = await req.json();
-    if(res.success) { currentProductImages.push(res.data.url); renderProductPreviews(); showToast("Image Added"); }
-  } catch(e) { showToast("Upload Failed",'error'); }
+    const req=await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`,{method:'POST',body:f});
+    const res=await req.json();
+    if(res.success){currentProductImages.push(res.data.url);renderProductPreviews();box.innerText='✅ Added';showToast("Image Added");}
+  } catch(e){showToast("Upload Failed",'error');}
+  setTimeout(()=>{box.innerText='📸 ADD IMAGE';input.value='';},2000);
 };
-function renderProductPreviews() {
-  const g = document.getElementById('p-img-grid'); g.innerHTML='';
-  currentProductImages.forEach((url,idx) => {
-    g.innerHTML += `<div class="image-wrapper"><img src="${url}" class="image-thumb"><span class="remove-img" onclick="removeProductImg(${idx})">x</span></div>`;
-  });
+
+function renderProductPreviews(){
+  const g=document.getElementById('p-img-grid');g.innerHTML='';
+  currentProductImages.forEach((url,idx)=>{g.innerHTML+=`<div class="image-wrapper"><img src="${url}" class="image-thumb"><span class="remove-img" onclick="removeProductImg(${idx})">x</span></div>`;});
 }
-window.removeProductImg = (idx) => { currentProductImages.splice(idx,1); renderProductPreviews(); };
+window.removeProductImg = (idx)=>{currentProductImages.splice(idx,1);renderProductPreviews();};
 
 // ====== PRODUCTS ======
 window.saveProduct = () => {
-  const id = document.getElementById('p-id').value;
-  const dl = document.getElementById('p-dl').value;
-  const dlExpiry = parseInt(document.getElementById('p-dl-expiry').value) || 0;
-  const dlUses = parseInt(document.getElementById('p-dl-uses').value) || 0;
-  if(!currentProductImages.length) { showToast("Upload at least one image",'error'); return; }
-  const d = {
-    title: document.getElementById('p-title').value,
-    category: document.getElementById('p-cat').value,
-    images: currentProductImages,
-    imageUrl: currentProductImages[0],
-    realPrice: document.getElementById('p-real').value,
-    discountedPrice: document.getElementById('p-disc').value,
-    description: document.getElementById('p-desc').value
-  };
-  toggleLoading('btn-save-p', true);
-  const ref = id ? db.ref('products/'+id) : db.ref('products').push();
-  ref.update(d).then(() => {
-    if(dl) db.ref('secure_links/'+ref.key).update({ link:dl, expiryHours:dlExpiry, maxUses:dlUses, createdAt:Date.now() });
-    showToast("Product Saved!"); clearP();
-  }).catch(e=>showToast(e.message,'error')).finally(()=>toggleLoading('btn-save-p',false));
+  const id=document.getElementById('p-id').value;
+  const dl=document.getElementById('p-dl').value;
+  if(!currentProductImages.length){showToast("Upload at least one image",'error');return;}
+  const d={title:document.getElementById('p-title').value,category:document.getElementById('p-cat').value,images:currentProductImages,imageUrl:currentProductImages[0],realPrice:document.getElementById('p-real').value,discountedPrice:document.getElementById('p-disc').value,description:document.getElementById('p-desc').value};
+  toggleLoading('btn-save-p',true);
+  const ref=id?db.ref('products/'+id):db.ref('products').push();
+  ref.update(d).then(()=>{if(dl)db.ref('secure_links/'+ref.key).update({link:dl});showToast("Product Saved!");clearP();}).catch(e=>showToast(e.message,'error')).finally(()=>toggleLoading('btn-save-p',false));
 };
-window.delProd = (id) => { if(confirm('Delete?')) db.ref('products/'+id).remove().then(()=>showToast("Product Deleted")); };
-window.editProd = (id) => {
-  db.ref('products/'+id).once('value').then(s => {
-    const v = s.val();
-    document.getElementById('p-id').value = id;
-    document.getElementById('p-title').value = v.title;
-    currentProductImages = v.images || (v.imageUrl?[v.imageUrl]:[]);
+window.delProd=(id)=>{if(confirm('Delete?'))db.ref('products/'+id).remove().then(()=>showToast("Product Deleted"));};
+window.editProd=(id)=>{
+  db.ref('products/'+id).once('value').then(s=>{
+    const v=s.val();
+    document.getElementById('p-id').value=id;
+    document.getElementById('p-title').value=v.title;
+    currentProductImages=v.images||(v.imageUrl?[v.imageUrl]:[]);
     renderProductPreviews();
-    document.getElementById('p-real').value = v.realPrice;
-    document.getElementById('p-disc').value = v.discountedPrice;
-    document.getElementById('p-desc').value = v.description||'';
-    document.getElementById('p-cat').value = v.category;
-    db.ref('secure_links/'+id).once('value').then(sl => {
-      if(sl.exists()) {
-        document.getElementById('p-dl').value = sl.val().link||'';
-        document.getElementById('p-dl-expiry').value = sl.val().expiryHours||0;
-        document.getElementById('p-dl-uses').value = sl.val().maxUses||0;
-      }
-    });
-    showTab('products');
+    document.getElementById('p-real').value=v.realPrice;
+    document.getElementById('p-disc').value=v.discountedPrice;
+    document.getElementById('p-desc').value=v.description||'';
+    document.getElementById('p-cat').value=v.category;
+    db.ref('secure_links/'+id).once('value').then(sl=>{if(sl.exists())document.getElementById('p-dl').value=sl.val().link||'';});
   });
 };
-window.clearP = () => {
-  document.querySelectorAll('#tab-products input, #tab-products textarea').forEach(i=>i.value='');
-  currentProductImages=[]; renderProductPreviews();
-  document.getElementById('p-id').value='';
-};
+window.clearP=()=>{document.querySelectorAll('#tab-products input, #tab-products textarea').forEach(i=>i.value='');currentProductImages=[];renderProductPreviews();document.getElementById('p-id').value='';};
 
 // ====== CATEGORIES ======
-window.saveCategory = () => {
-  const id = document.getElementById('c-id').value;
-  const d = { name:document.getElementById('c-name').value, image:document.getElementById('c-img').value };
+window.saveCategory=()=>{
+  const id=document.getElementById('c-id').value;
+  const d={name:document.getElementById('c-name').value,image:document.getElementById('c-img').value};
   toggleLoading('btn-save-c',true);
-  const ref = id ? db.ref('categories/'+id) : db.ref('categories').push();
-  ref.update(d).then(()=>{ showToast("Category Saved!"); clearC(); }).finally(()=>toggleLoading('btn-save-c',false));
+  const ref=id?db.ref('categories/'+id):db.ref('categories').push();
+  ref.update(d).then(()=>{showToast("Category Saved!");clearC();}).finally(()=>toggleLoading('btn-save-c',false));
 };
-window.delCat = (id) => { if(confirm('Delete?')) db.ref('categories/'+id).remove().then(()=>showToast("Category Deleted")); };
-window.editCat = (id) => {
-  db.ref('categories/'+id).once('value').then(s=>{
-    const v=s.val();
-    document.getElementById('c-id').value=id;
-    document.getElementById('c-name').value=v.name;
-    document.getElementById('c-img').value=v.image;
-    document.getElementById('prev-c').src=v.image; document.getElementById('prev-c').style.display='block';
-  });
-};
-window.clearC = () => { document.getElementById('c-id').value=''; document.getElementById('c-name').value=''; document.getElementById('c-img').value=''; document.getElementById('prev-c').style.display='none'; };
-
-// ====== ORDERS ======
-function renderOrders() {
-  const filter = document.getElementById('order-filter').value;
-  const search = (document.getElementById('order-search').value||'').toLowerCase();
-  const l = document.getElementById('list-orders'); l.innerHTML='';
-  if(!allOrdersData.length) { l.innerHTML='<p style="text-align:center;color:#666;">No orders yet.</p>'; return; }
-  const filtered = allOrdersData.filter(o => {
-    const matchFilter = filter==='all' || (o.status||'pending')===filter;
-    const matchSearch = !search || (o.email||'').toLowerCase().includes(search);
-    return matchFilter && matchSearch;
-  });
-  if(!filtered.length) { l.innerHTML='<p style="text-align:center;color:#666;">No matching orders.</p>'; return; }
-  filtered.sort((a,b)=>(b.date||b.createdAt||0)-(a.date||a.createdAt||0)).forEach(o => {
-    const status = o.status||'pending';
-    const badgeClass = `badge-${status}`;
-    const date = new Date(o.date||o.createdAt||0).toLocaleString();
-    l.innerHTML += `<div class="list-item" style="flex-direction:column;align-items:start;gap:8px;">
-      <div style="display:flex;justify-content:space-between;width:100%;flex-wrap:wrap;gap:5px;">
-        <div>
-          <div style="color:var(--primary);font-weight:bold;">${o.item||o.productSnapshot?.title||'Order'}</div>
-          <div style="font-size:0.8rem;color:#aaa;">${o.email} • ${date}</div>
-          ${o.paymentId ? `<div style="font-size:0.7rem;color:#555;">Payment: ${o.paymentId}</div>`:''}
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span class="badge ${badgeClass}">${status}</span>
-          <span style="color:var(--primary);font-weight:bold;">₹${o.price||0}</span>
-        </div>
-      </div>
-      <div class="action-row">
-        <button class="btn btn-sm" style="background:#00e676;color:#000;" onclick="updateOrderStatus('${o.key}','completed')">✓ Complete</button>
-        <button class="btn btn-sm btn-danger" onclick="updateOrderStatus('${o.key}','refunded')">↩ Refund</button>
-        <button class="btn btn-sm" style="background:#333;color:#fff;" onclick="updateOrderStatus('${o.key}','pending')">⏳ Pending</button>
-        <button class="btn btn-sm" style="background:#1a1a1a;color:#aaa;" onclick="generateInvoice('${o.key}')">🧾 Invoice</button>
-      </div>
-    </div>`;
-  });
-}
-window.updateOrderStatus = (id, status) => {
-  db.ref('orders/'+id).update({ status }).then(()=>showToast(`Order marked ${status}`));
-};
-window.generateInvoice = (id) => {
-  const o = allOrdersData.find(x=>x.key===id);
-  if(!o) return;
-  const w = window.open('','_blank');
-  w.document.write(`<html><head><title>Invoice</title><style>body{font-family:Arial;padding:40px;} h1{color:#702122;}</style></head>
-  <body><h1>Anifold Store — Invoice</h1>
-  <p><b>Order ID:</b> ${id}</p>
-  <p><b>Product:</b> ${o.item||'N/A'}</p>
-  <p><b>Customer:</b> ${o.email}</p>
-  <p><b>Amount:</b> ₹${o.price||0}</p>
-  <p><b>Payment ID:</b> ${o.paymentId||'N/A'}</p>
-  <p><b>Date:</b> ${new Date(o.date||o.createdAt||0).toLocaleString()}</p>
-  <p><b>Status:</b> ${o.status||'pending'}</p>
-  <hr/><p style="font-size:0.8rem;color:#999;">Thank you for purchasing from Anifold Store. For support, contact us on WhatsApp.</p>
-  <button onclick="window.print()" style="padding:10px 20px;background:#702122;color:white;border:none;border-radius:6px;cursor:pointer;">🖨️ Print Invoice</button>
-  </body></html>`);
-};
+window.delCat=(id)=>{if(confirm('Delete?'))db.ref('categories/'+id).remove().then(()=>showToast("Category Deleted"));};
+window.editCat=(id)=>{db.ref('categories/'+id).once('value').then(s=>{const v=s.val();document.getElementById('c-id').value=id;document.getElementById('c-name').value=v.name;document.getElementById('c-img').value=v.image;document.getElementById('prev-c').src=v.image;document.getElementById('prev-c').style.display='block';});};
+window.clearC=()=>{document.getElementById('c-id').value='';document.getElementById('c-name').value='';document.getElementById('c-img').value='';document.getElementById('prev-c').style.display='none';};
 
 // ====== USERS ======
-window.filterUsers = (q) => {
-  const l = document.getElementById('list-users'); l.innerHTML='';
-  const filtered = Object.entries(allUsersData).filter(([uid,u]) => !q || (u.email||'').toLowerCase().includes(q.toLowerCase()) || (u.firstName||'').toLowerCase().includes(q.toLowerCase()));
-  if(!filtered.length) { l.innerHTML='<p style="text-align:center;color:#666;">No users found.</p>'; return; }
-  filtered.forEach(([uid,u]) => {
-    const name = u.firstName ? `${u.firstName} ${u.lastName||''}` : "No Name";
-    l.innerHTML += `<div class="list-item" style="flex-direction:column;align-items:start;">
+window.filterUsers=(q)=>{
+  const l=document.getElementById('list-users');l.innerHTML='';
+  const filtered=Object.entries(allUsersData).filter(([uid,u])=>!q||(u.email||'').toLowerCase().includes(q.toLowerCase())||(u.firstName||'').toLowerCase().includes(q.toLowerCase()));
+  if(!filtered.length){l.innerHTML='<p style="text-align:center;color:#666;">No users found.</p>';return;}
+  filtered.forEach(([uid,u])=>{
+    const name=u.firstName?`${u.firstName} ${u.lastName||''}`:"No Name";
+    l.innerHTML+=`<div class="list-item" style="flex-direction:column;align-items:start;gap:8px;">
       <div class="user-email">${u.email}</div>
       <div class="user-details">👤 ${name} | 📞 ${u.mobile||'N/A'}</div>
-      <div style="font-size:0.7rem;color:#555;margin-bottom:8px;">ID: ${uid}</div>
+      <div style="font-size:0.7rem;color:#555;margin-bottom:4px;">ID: ${uid}</div>
       <div class="action-row">
-        <button class="btn btn-warn btn-sm" onclick="resetUserPass('${u.email}')">Reset Pass</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteUserData('${uid}')">Delete</button>
+        <button class="btn btn-warn" style="width:auto;padding:5px 10px;font-size:0.7rem" onclick="resetUserPass('${u.email}')">Reset Pass</button>
+        <button class="btn btn-danger" style="width:auto;padding:5px 10px;font-size:0.7rem" onclick="deleteUserData('${uid}')">Del</button>
       </div>
     </div>`;
   });
 };
-window.resetUserPass = (email) => { if(confirm("Send Reset Email?")) auth.sendPasswordResetEmail(email).then(()=>showToast("Reset Email Sent")); };
-window.deleteUserData = (uid) => { if(confirm("Delete user data?")) db.ref('users/'+uid).remove().then(()=>showToast("User Deleted")); };
-
-// ====== REVIEWS ======
-function loadReviews() {
-  const l = document.getElementById('list-reviews'); l.innerHTML='<p style="text-align:center;color:#666;">Loading...</p>';
-  db.ref('reviews').once('value').then(s => {
-    l.innerHTML='';
-    if(!s.exists()) { l.innerHTML='<p style="text-align:center;color:#666;">No reviews yet.</p>'; return; }
-    s.forEach(prodSnap => {
-      prodSnap.forEach(rev => {
-        const v=rev.val();
-        const stars='★'.repeat(v.rating||5)+'☆'.repeat(5-(v.rating||5));
-        l.innerHTML += `<div class="review-item">
-          <div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:5px;">
-            <div>
-              <div class="stars">${stars}</div>
-              <div style="font-weight:bold;font-size:0.9rem;margin-top:4px;">${v.userName||'Anonymous'}</div>
-              <div style="font-size:0.75rem;color:#666;">${v.productName||''} • ${new Date(v.date||0).toLocaleDateString()}</div>
-              <div style="margin-top:8px;font-size:0.9rem;color:#ccc;">${v.comment||''}</div>
-            </div>
-            <div class="action-row">
-              <button class="btn btn-sm" style="background:#00e676;color:#000;" onclick="approveReview('${prodSnap.key}','${rev.key}','${v.approved?'false':'true'}')">
-                ${v.approved ? '✓ Approved' : 'Approve'}
-              </button>
-              <button class="btn btn-sm btn-danger" onclick="deleteReview('${prodSnap.key}','${rev.key}')">Delete</button>
-            </div>
-          </div>
-        </div>`;
-      });
-    });
-  });
-}
-window.approveReview = (pid, rid, val) => {
-  db.ref(`reviews/${pid}/${rid}`).update({ approved: val==='true' }).then(()=>{ showToast("Review updated"); loadReviews(); });
-};
-window.deleteReview = (pid, rid) => {
-  if(confirm('Delete review?')) db.ref(`reviews/${pid}/${rid}`).remove().then(()=>{ showToast("Review Deleted"); loadReviews(); });
-};
-
-// ====== FLASH SALE ======
-window.saveFlashSale = () => {
-  const start = document.getElementById('flash-start').value;
-  const end = document.getElementById('flash-end').value;
-  if(!end) { showToast("End time required",'error'); return; }
-  const data = {
-    title: document.getElementById('flash-title').value || 'Flash Sale',
-    banner: document.getElementById('flash-banner').value,
-    discount: parseInt(document.getElementById('flash-discount').value)||0,
-    type: document.getElementById('flash-type').value,
-    startTime: start ? Date.parse(start) : Date.now(),
-    endTime: Date.parse(end),
-    active: true
-  };
-  toggleLoading('btn-save-flash', true);
-  db.ref('meta/flashSale').set(data).then(()=>{ showToast("Flash Sale Activated! 🔥"); loadFlashStatus(); }).finally(()=>toggleLoading('btn-save-flash',false));
-};
-window.endFlashSale = () => {
-  if(confirm('End flash sale?')) db.ref('meta/flashSale').update({ active:false }).then(()=>{ showToast("Flash Sale Ended"); loadFlashStatus(); });
-};
-function loadFlashStatus() {
-  db.ref('meta/flashSale').once('value').then(s => {
-    const d = document.getElementById('flash-status');
-    if(s.exists()&&s.val().active) {
-      const v=s.val();
-      const remaining = Math.max(0, v.endTime - Date.now());
-      const hrs = Math.floor(remaining/3600000);
-      const mins = Math.floor((remaining%3600000)/60000);
-      d.style.display='block';
-      d.innerHTML=`<span style="color:#ff9800;font-weight:bold;">🔥 ACTIVE:</span> ${v.title} — ${v.discount}${v.type==='percent'?'%':'₹'} OFF | Ends in: <b>${hrs}h ${mins}m</b>`;
-    } else {
-      d.style.display='block'; d.style.color='#666';
-      d.innerHTML='No active flash sale.';
-    }
-  });
-}
-
-// ====== PUSH NOTIFICATIONS ======
-window.sendPushNotification = () => {
-  const title = document.getElementById('notif-title').value;
-  const body = document.getElementById('notif-body').value;
-  const url = document.getElementById('notif-url').value || 'https://anifold.shop';
-  const icon = document.getElementById('notif-icon').value;
-  if(!title||!body) { showToast("Title & Message required",'error'); return; }
-  toggleLoading('btn-send-notif', true);
-  const notifData = { title, body, url, icon, sentAt: Date.now() };
-  db.ref('notifications').push(notifData).then(()=>{
-    // Write to notif queue for service worker to pick up
-    db.ref('meta/latestNotification').set(notifData);
-    showToast("Notification queued for all subscribed users! 📢",'info');
-    document.getElementById('notif-title').value='';
-    document.getElementById('notif-body').value='';
-    loadNotifHistory();
-  }).finally(()=>toggleLoading('btn-send-notif',false));
-};
-function loadNotifHistory() {
-  db.ref('notifications').limitToLast(10).once('value').then(s=>{
-    const l=document.getElementById('notif-history'); l.innerHTML='';
-    if(!s.exists()) { l.innerHTML='<p style="color:#666;font-size:0.85rem;">No notifications sent yet.</p>'; return; }
-    const items=[]; s.forEach(c=>items.push({...c.val(),key:c.key}));
-    items.reverse().forEach(n=>{
-      l.innerHTML+=`<div style="padding:10px;border:1px solid #333;border-radius:6px;margin-bottom:8px;">
-        <div style="font-weight:bold;font-size:0.9rem;">${n.title}</div>
-        <div style="font-size:0.8rem;color:#aaa;">${n.body}</div>
-        <div style="font-size:0.7rem;color:#555;margin-top:4px;">${new Date(n.sentAt).toLocaleString()}</div>
-      </div>`;
-    });
-  });
-  db.ref('pushSubscriptions').once('value').then(s=>{
-    const el=document.getElementById('notif-subscribers');
-    el.textContent = s.exists() ? `${Object.keys(s.val()).length} users subscribed to push notifications` : 'No subscribers yet.';
-  });
-}
-
-// ====== SECURE LINKS ======
-window.generateSecureLink = () => {
-  const pid = document.getElementById('sec-product').value;
-  const url = document.getElementById('sec-url').value;
-  const expiry = parseInt(document.getElementById('sec-expiry').value)||48;
-  const uses = parseInt(document.getElementById('sec-uses').value)||1;
-  if(!pid||!url) { showToast("Select product and enter URL",'error'); return; }
-  const token = Math.random().toString(36).substr(2,16) + Date.now().toString(36);
-  const expiresAt = expiry > 0 ? Date.now() + expiry*3600000 : 0;
-  const linkData = { productId:pid, url, token, expiresAt, maxUses:uses, usedCount:0, createdAt:Date.now() };
-  db.ref('secure_links/'+pid).set(linkData).then(()=>{ showToast("Secure Link Generated! 🔐"); loadSecureLinks(); }).catch(e=>showToast(e.message,'error'));
-};
-function loadSecureLinks() {
-  const l=document.getElementById('secure-links-list'); l.innerHTML='<p style="color:#666;font-size:0.85rem;">Loading...</p>';
-  db.ref('secure_links').once('value').then(s=>{
-    l.innerHTML='';
-    if(!s.exists()) { l.innerHTML='<p style="color:#666;">No secure links generated yet.</p>'; return; }
-    s.forEach(c=>{
-      const v=c.val();
-      const expired = v.expiresAt && Date.now()>v.expiresAt;
-      const maxedOut = v.maxUses && v.usedCount>=v.maxUses;
-      const status = expired?'EXPIRED':(maxedOut?'USED UP':'ACTIVE');
-      const statusColor = (expired||maxedOut)?'var(--danger)':'#00e676';
-      const usagePercent = v.maxUses ? Math.min(100,(v.usedCount||0)/v.maxUses*100) : 0;
-      l.innerHTML+=`<div style="background:rgba(255,255,255,0.02);border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:5px;">
-          <div>
-            <div style="font-weight:bold;color:var(--primary);font-size:0.9rem;">Product ID: ${c.key.substring(0,8)}...</div>
-            <div class="secure-link-row">Uses: ${v.usedCount||0}/${v.maxUses||'∞'} | Expires: ${v.expiresAt?new Date(v.expiresAt).toLocaleString():'Never'}</div>
-            ${v.maxUses?`<div class="progress-bar-wrap"><div class="progress-bar" style="width:${usagePercent}%;"></div></div>`:''}
-          </div>
-          <span style="color:${statusColor};font-weight:bold;font-size:0.8rem;">${status}</span>
-        </div>
-        <div style="display:flex;gap:5px;margin-top:8px;">
-          <button class="btn btn-sm" style="background:#333;color:#aaa;" onclick="copyLink('${v.url}')">📋 Copy URL</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteSecureLink('${c.key}')">🗑️ Delete</button>
-        </div>
-      </div>`;
-    });
-  });
-}
-window.copyLink = (url) => { navigator.clipboard.writeText(url).then(()=>showToast("Copied!")); };
-window.deleteSecureLink = (id) => { if(confirm('Delete this link?')) db.ref('secure_links/'+id).remove().then(()=>{ showToast("Link Deleted"); loadSecureLinks(); }); };
-
-// ====== COUPONS ======
-window.saveCoupon = () => {
-  let code = document.getElementById('coup-code').value.toUpperCase().trim().replace(/[^A-Z0-9]/g,'');
-  const val = document.getElementById('coup-val').value;
-  const type = document.getElementById('coup-type').value;
-  const start = document.getElementById('coup-start').value;
-  const end = document.getElementById('coup-end').value;
-  const limitPerUser = parseInt(document.getElementById('coup-limit-user').value)||0;
-  const limitTotal = parseInt(document.getElementById('coup-limit-total').value)||0;
-  const oldCode = document.getElementById('old-coup-code').value;
-  if(!code||!val) { showToast("Code & Value Required",'error'); return; }
-  toggleLoading('btn-save-coup',true);
-  const data = { code, discount:parseInt(val), type, startTime:start?Date.parse(start):0, endTime:end?Date.parse(end):0, limitPerUser, limitTotal };
-  if(oldCode&&oldCode!==code) db.ref('coupons/'+oldCode).remove();
-  db.ref('coupons/'+code).set(data).then(()=>{ showToast("Coupon Saved!"); resetCouponForm(); }).catch(e=>showToast(e.message,'error')).finally(()=>toggleLoading('btn-save-coup',false));
-};
-window.editCoupon = (code) => {
-  db.ref('coupons/'+code).once('value').then(s=>{
-    const v=s.val();
-    if(!v) return;
-    document.getElementById('old-coup-code').value=code;
-    document.getElementById('coup-code').value=v.code;
-    document.getElementById('coup-val').value=v.discount;
-    document.getElementById('coup-type').value=v.type||'percent';
-    if(v.startTime) document.getElementById('coup-start').value=new Date(v.startTime-(new Date()).getTimezoneOffset()*60000).toISOString().slice(0,16);
-    if(v.endTime) document.getElementById('coup-end').value=new Date(v.endTime-(new Date()).getTimezoneOffset()*60000).toISOString().slice(0,16);
-    document.getElementById('coup-limit-user').value=v.limitPerUser||'';
-    document.getElementById('coup-limit-total').value=v.limitTotal||'';
-    document.getElementById('coupon-form-title').innerText='EDIT COUPON: '+code;
-    document.querySelector('#btn-save-coup span').innerText='UPDATE COUPON';
-    document.getElementById('btn-cancel-coup').classList.remove('hidden');
-  });
-};
-window.resetCouponForm = () => {
-  document.querySelectorAll('#tab-coupons input').forEach(i=>i.value='');
-  document.getElementById('coupon-form-title').innerText='CREATE COUPON';
-  document.querySelector('#btn-save-coup span').innerText='SAVE COUPON';
-  document.getElementById('btn-cancel-coup').classList.add('hidden');
-  document.getElementById('old-coup-code').value='';
-};
-window.delCoupon = (code) => {
-  if(confirm("Delete coupon "+code+"?")) db.ref('coupons/'+code).remove().then(()=>showToast("Coupon Deleted"));
-};
+window.resetUserPass=(email)=>{if(confirm("Send Reset Email?"))auth.sendPasswordResetEmail(email).then(()=>showToast("Reset Email Sent"));};
+window.deleteUserData=(uid)=>{if(confirm("Delete user data?"))db.ref('users/'+uid).remove().then(()=>showToast("User Deleted"));};
 
 // ====== SETTINGS ======
-window.saveMeta = (btn, type) => {
+window.saveMeta=(btn, type)=>{
   btn.querySelector('span').innerText='Saving...'; btn.disabled=true;
   let d={};
   if(type==='brand') d={name:document.getElementById('s-name').value,headerLogoUrl:document.getElementById('s-logo').value,heroImageUrl:document.getElementById('s-hero').value,footerLogoUrl:document.getElementById('s-footer').value,faviconUrl:document.getElementById('s-fav').value};
@@ -872,139 +452,92 @@ window.saveMeta = (btn, type) => {
   db.ref('meta/'+type).update(d).then(()=>{showToast("Saved!");btn.querySelector('span').innerText='SAVE';btn.disabled=false;}).catch(e=>{showToast(e.message,'error');btn.querySelector('span').innerText='SAVE';btn.disabled=false;});
 };
 
+// ====== COUPONS ======
+window.saveCoupon=()=>{
+  let code=document.getElementById('coup-code').value.toUpperCase().trim().replace(/[^A-Z0-9]/g,'');
+  const val=document.getElementById('coup-val').value;
+  const type=document.getElementById('coup-type').value;
+  const start=document.getElementById('coup-start').value;
+  const end=document.getElementById('coup-end').value;
+  const limitPerUser=parseInt(document.getElementById('coup-limit-user').value)||0;
+  const limitTotal=parseInt(document.getElementById('coup-limit-total').value)||0;
+  const oldCode=document.getElementById('old-coup-code').value;
+  if(!code||!val){showToast("Code & Value Required",'error');return;}
+  toggleLoading('btn-save-coup',true);
+  const data={code,discount:parseInt(val),type,startTime:start?Date.parse(start):0,endTime:end?Date.parse(end):0,limitPerUser,limitTotal};
+  if(oldCode&&oldCode!==code)db.ref('coupons/'+oldCode).remove();
+  db.ref('coupons/'+code).set(data).then(()=>{showToast("Coupon Saved!");resetCouponForm();}).catch(e=>showToast(e.message,'error')).finally(()=>toggleLoading('btn-save-coup',false));
+};
+window.editCoupon=(code)=>{
+  db.ref('coupons/'+code).once('value').then(s=>{
+    const v=s.val();if(!v)return;
+    document.getElementById('old-coup-code').value=code;
+    document.getElementById('coup-code').value=v.code;
+    document.getElementById('coup-val').value=v.discount;
+    document.getElementById('coup-type').value=v.type||'percent';
+    if(v.startTime)document.getElementById('coup-start').value=new Date(v.startTime-(new Date()).getTimezoneOffset()*60000).toISOString().slice(0,16);
+    if(v.endTime)document.getElementById('coup-end').value=new Date(v.endTime-(new Date()).getTimezoneOffset()*60000).toISOString().slice(0,16);
+    document.getElementById('coup-limit-user').value=v.limitPerUser||'';
+    document.getElementById('coup-limit-total').value=v.limitTotal||'';
+    document.getElementById('coupon-form-title').innerText='EDIT COUPON: '+code;
+    document.querySelector('#btn-save-coup span').innerText='UPDATE COUPON';
+    document.getElementById('btn-cancel-coup').classList.remove('hidden');
+  });
+};
+window.resetCouponForm=()=>{
+  document.querySelectorAll('#tab-coupons input').forEach(i=>i.value='');
+  document.getElementById('coupon-form-title').innerText='CREATE COUPON';
+  document.querySelector('#btn-save-coup span').innerText='SAVE COUPON';
+  document.getElementById('btn-cancel-coup').classList.add('hidden');
+  document.getElementById('old-coup-code').value='';
+};
+window.delCoupon=(code)=>{if(confirm("Delete coupon "+code+"?"))db.ref('coupons/'+code).remove().then(()=>showToast("Coupon Deleted"));};
+
 // ====== SECURITY ======
-window.clearLogs = () => { if(confirm("Clear all logs?")) db.ref('security_logs').remove().then(()=>showToast("Logs Cleared")); };
-
-// ====== ANALYTICS ======
-function renderAnalytics() {
-  const orders = allOrdersData;
-  const totalRevenue = orders.reduce((sum,o)=>sum+(parseInt(o.price)||0),0);
-  const totalUsers = Object.keys(allUsersData).length;
-  document.getElementById('stat-revenue').textContent = '₹'+totalRevenue.toLocaleString();
-  document.getElementById('stat-orders').textContent = orders.length;
-  document.getElementById('stat-users').textContent = totalUsers;
-
-  // Revenue chart (last 30 days)
-  const revenueMap = {};
-  for(let i=29;i>=0;i--) {
-    const d=new Date(); d.setDate(d.getDate()-i);
-    const key=d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
-    revenueMap[key]=0;
-  }
-  orders.forEach(o=>{
-    if(o.date||o.createdAt) {
-      const d=new Date(o.date||o.createdAt);
-      const key=d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
-      if(revenueMap.hasOwnProperty(key)) revenueMap[key]+=(parseInt(o.price)||0);
-    }
-  });
-  const revLabels=Object.keys(revenueMap);
-  const revData=Object.values(revenueMap);
-
-  if(revenueChartInst) revenueChartInst.destroy();
-  const rCtx=document.getElementById('revenueChart').getContext('2d');
-  revenueChartInst=new Chart(rCtx,{
-    type:'line',
-    data:{labels:revLabels,datasets:[{label:'Revenue (₹)',data:revData,borderColor:'#00f3ff',backgroundColor:'rgba(0,243,255,0.05)',fill:true,tension:0.4,pointRadius:3}]},
-    options:{plugins:{legend:{labels:{color:'#aaa'}}},scales:{x:{ticks:{color:'#666',maxTicksLimit:10},grid:{color:'#222'}},y:{ticks:{color:'#aaa'},grid:{color:'#222'}}},responsive:true}
-  });
-
-  // Orders chart (last 14 days)
-  const ordMap={};
-  for(let i=13;i>=0;i--){
-    const d=new Date();d.setDate(d.getDate()-i);
-    const key=d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});ordMap[key]=0;
-  }
-  orders.forEach(o=>{
-    if(o.date||o.createdAt){
-      const d=new Date(o.date||o.createdAt);
-      const key=d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
-      if(ordMap.hasOwnProperty(key)) ordMap[key]++;
-    }
-  });
-  if(ordersChartInst) ordersChartInst.destroy();
-  const oCtx=document.getElementById('ordersChart').getContext('2d');
-  ordersChartInst=new Chart(oCtx,{
-    type:'bar',
-    data:{labels:Object.keys(ordMap),datasets:[{label:'Orders',data:Object.values(ordMap),backgroundColor:'rgba(168,85,247,0.6)',borderColor:'#a855f7',borderWidth:1}]},
-    options:{plugins:{legend:{labels:{color:'#aaa'}}},scales:{x:{ticks:{color:'#666'},grid:{color:'#222'}},y:{ticks:{color:'#aaa',stepSize:1},grid:{color:'#222'}}},responsive:true}
-  });
-
-  // Top products
-  const productSales={};
-  orders.forEach(o=>{ const name=o.item||'Unknown'; productSales[name]=(productSales[name]||0)+1; });
-  const sorted=Object.entries(productSales).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  if(topProductsChartInst) topProductsChartInst.destroy();
-  const tCtx=document.getElementById('topProductsChart').getContext('2d');
-  topProductsChartInst=new Chart(tCtx,{
-    type:'doughnut',
-    data:{labels:sorted.map(x=>x[0]),datasets:[{data:sorted.map(x=>x[1]),backgroundColor:['#00f3ff','#a855f7','#ff9800','#00e676','#ff2a6d']}]},
-    options:{plugins:{legend:{labels:{color:'#aaa'},position:'right'}},responsive:true}
-  });
-}
+window.clearLogs=()=>{if(confirm("Clear Logs?"))db.ref('security_logs').remove().then(()=>showToast("Logs Cleared"));};
 
 // ====== INIT DATA ======
 function initData() {
-  db.ref('products').on('value', s => {
-    const l=document.getElementById('list-products'); l.innerHTML='';
-    const secSel=document.getElementById('sec-product');
-    secSel.innerHTML='<option value="">Select Product...</option>';
-    const pSel=document.getElementById('p-cat');
-    let count=0;
-    if(s.exists()) {
-      s.forEach(c=>{
-        const p=c.val(); count++;
-        l.innerHTML+=`<div class="list-item"><div><b style="color:var(--primary);">${p.title}</b><br><span style="font-size:0.75rem;color:#666;">${p.category||''} | ₹${p.discountedPrice||0}</span></div><div class="action-row"><button class="btn btn-sm" onclick="editProd('${c.key}')">Edit</button><button class="btn btn-sm btn-danger" onclick="delProd('${c.key}')">✕</button></div></div>`;
-        secSel.innerHTML+=`<option value="${c.key}">${p.title}</option>`;
-      });
-    }
-    document.getElementById('stat-products').textContent=count;
+  db.ref('products').on('value', s=>{
+    const l=document.getElementById('list-products');l.innerHTML='';
+    if(s.exists())s.forEach(c=>{const p=c.val();l.innerHTML+=`<div class="list-item"><div><b style="color:var(--primary);">${p.title}</b><br><span style="font-size:0.75rem;color:#666;">${p.category||''} | ₹${p.discountedPrice||0}</span></div><div class="action-row"><button class="btn" style="width:auto;padding:5px 10px;" onclick="editProd('${c.key}')">Edit</button><button class="btn btn-danger" style="width:auto;padding:5px 10px;" onclick="delProd('${c.key}')">✕</button></div></div>`;});
   });
 
-  db.ref('categories').on('value', s => {
+  db.ref('categories').on('value', s=>{
     const l=document.getElementById('list-categories');
     const sel=document.getElementById('p-cat');
-    l.innerHTML=''; sel.innerHTML='<option value="">Select Category</option>';
-    if(s.exists()) s.forEach(c=>{ const v=c.val(); l.innerHTML+=`<div class="list-item"><b>${v.name}</b><div class="action-row"><button class="btn btn-sm" onclick="editCat('${c.key}')">Edit</button><button class="btn btn-sm btn-danger" onclick="delCat('${c.key}')">✕</button></div></div>`; sel.innerHTML+=`<option value="${v.name}">${v.name}</option>`; });
+    l.innerHTML='';sel.innerHTML='<option value="">Select Category</option>';
+    if(s.exists())s.forEach(c=>{const v=c.val();l.innerHTML+=`<div class="list-item"><b>${v.name}</b><div class="action-row"><button class="btn" style="width:auto;padding:5px 10px;" onclick="editCat('${c.key}')">Edit</button><button class="btn btn-danger" style="width:auto;padding:5px 10px;" onclick="delCat('${c.key}')">✕</button></div></div>`;sel.innerHTML+=`<option value="${v.name}">${v.name}</option>`;});
   });
 
-  db.ref('orders').on('value', s => {
-    allOrdersData=[];
-    if(s.exists()) s.forEach(c=>allOrdersData.push({key:c.key,...c.val()}));
+  db.ref('orders').on('value', s=>{
+    const l=document.getElementById('list-orders');l.innerHTML='';
+    if(s.exists())s.forEach(c=>{const o=c.val();l.innerHTML+=`<div class="list-item" style="flex-direction:column;align-items:start;"><div style="color:var(--primary);font-weight:bold;">${o.item||'Order'}</div><small style="color:#aaa;">${o.email} | ${new Date(o.date||o.createdAt||0).toLocaleDateString()} | ₹${o.price||0}</small></div>`;});
+    else l.innerHTML='<p style="text-align:center;color:#666;padding:20px;">No orders yet.</p>';
   });
 
-  db.ref('users').on('value', s => {
+  db.ref('users').on('value', s=>{
     allUsersData={};
-    const l=document.getElementById('list-users'); l.innerHTML='';
-    if(s.exists()) {
-      s.forEach(c=>{ allUsersData[c.key]=c.val(); });
-      filterUsers('');
-    } else { l.innerHTML='<p style="text-align:center;color:#666;">No users.</p>'; }
+    if(s.exists()){s.forEach(c=>{allUsersData[c.key]=c.val();});filterUsers('');}
+    else document.getElementById('list-users').innerHTML='<p style="text-align:center;color:#666;">No users yet.</p>';
   });
 
-  db.ref('security_logs').limitToLast(20).on('value', s => {
-    const l=document.getElementById('list-security'); l.innerHTML='';
-    const logs=[];
-    s.forEach(c=>logs.push(c.val()));
-    logs.reverse().forEach(log=>{
-      l.innerHTML+=`<div class="list-item" style="display:block;border-left:3px solid red;">
-        <strong style="color:#ff3366;">⚠️ ${log.error||'Alert'}</strong><br>
-        <span style="font-size:0.8rem;">${log.email||'Unknown'}</span>
-        <div style="font-size:0.7rem;color:#aaa;">${log.location||''} | ${new Date(log.timestamp||0).toLocaleString()}</div>
-      </div>`;
-    });
+  db.ref('security_logs').limitToLast(20).on('value', s=>{
+    const l=document.getElementById('list-security');l.innerHTML='';
+    const logs=[];s.forEach(c=>logs.push(c.val()));
+    logs.reverse().forEach(log=>{l.innerHTML+=`<div class="list-item" style="display:block;border-left:3px solid red;"><strong style="color:#ff3366;">⚠️ ${log.error||'Alert'}</strong><br><span style="font-size:0.8rem;">${log.email||'Unknown'}</span><div style="font-size:0.7rem;color:#aaa;">${log.location||''} | ${new Date(log.timestamp||0).toLocaleString()}</div></div>`;});
   });
 
-  db.ref('coupons').on('value', s => {
-    const l=document.getElementById('list-coupons'); l.innerHTML='';
-    if(s.exists()) {
+  db.ref('coupons').on('value', s=>{
+    const l=document.getElementById('list-coupons');l.innerHTML='';
+    if(s.exists()){
       s.forEach(c=>{
         const v=c.val();
-        const disc = v.type==='fixed'?`₹${v.discount}`:`${v.discount}%`;
-        const expiry = v.endTime?new Date(v.endTime).toLocaleDateString():'Never';
-        l.innerHTML+=`<div class="list-item"><div><b style="color:var(--primary);">${v.code}</b> <span style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px;font-size:0.8rem;">${disc} OFF</span><div class="coup-meta">Limit/user: ${v.limitPerUser||'∞'} | Global: ${v.limitTotal||'∞'} | Expires: ${expiry}</div></div><div class="action-row"><button class="btn btn-sm" onclick="editCoupon('${c.key}')">✏️</button><button class="btn btn-sm btn-danger" onclick="delCoupon('${c.key}')">🗑️</button></div></div>`;
+        const disc=v.type==='fixed'?`₹${v.discount}`:`${v.discount}%`;
+        const expiry=v.endTime?new Date(v.endTime).toLocaleDateString():'Never';
+        l.innerHTML+=`<div class="list-item"><div><b style="color:var(--primary);font-size:1.1rem;">${v.code}</b> <span style="background:rgba(255,255,255,0.1);padding:2px 6px;border-radius:4px;font-size:0.8rem;font-weight:bold;">${disc} OFF</span><div class="coup-meta">User: ${v.limitPerUser||'∞'} | Global: ${v.limitTotal||'∞'} | Expires: ${expiry}</div></div><div class="action-row"><button class="btn" style="width:auto;padding:8px 12px;margin:0" onclick="editCoupon('${c.key}')">✏️</button><button class="btn btn-danger" style="width:auto;padding:8px 12px;margin:0" onclick="delCoupon('${c.key}')">🗑️</button></div></div>`;
       });
-    } else { l.innerHTML='<p style="text-align:center;color:#666;">No coupons.</p>'; }
+    } else l.innerHTML='<p style="text-align:center;color:#666;padding:20px;">No active coupons.</p>';
   });
 
   db.ref('meta').once('value').then(s=>{
@@ -1015,16 +548,6 @@ function initData() {
     if(v?.brand){document.getElementById('s-name').value=v.brand.name||'';document.getElementById('s-logo').value=v.brand.headerLogoUrl||'';document.getElementById('s-hero').value=v.brand.heroImageUrl||'';document.getElementById('s-footer').value=v.brand.footerLogoUrl||'';}
     if(v?.contact){document.getElementById('con-msg').value=v.contact.message||'';document.getElementById('s-wa').value=v.contact.whatsapp||'';document.getElementById('s-email').value=v.contact.email||'';document.getElementById('s-hours').value=v.contact.hours||'';document.getElementById('s-add').value=v.contact.address||'';document.getElementById('s-insta').value=v.contact.instagram||'';document.getElementById('s-yt').value=v.contact.youtube||'';}
     if(v?.policies){document.getElementById('pol-terms').value=v.policies.terms||'';document.getElementById('pol-privacy').value=v.policies.privacy||'';document.getElementById('pol-refund').value=v.policies.refund||'';document.getElementById('pol-about').value=v.policies.about||'';}
-  });
-
-  // Show new order notifications in real-time
-  db.ref('orders').limitToLast(1).on('child_added', snap => {
-    const o=snap.val();
-    if(o&&Date.now()-(o.date||0)<60000) {
-      document.getElementById('notif-dot').style.display='block';
-      showToast(`🛒 New order: ${o.item||'Product'} — ₹${o.price||0}`,'info');
-      setTimeout(()=>document.getElementById('notif-dot').style.display='none', 5000);
-    }
   });
 }
 </script>
