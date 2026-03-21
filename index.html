@@ -163,7 +163,7 @@ canvas { max-height: 260px; }
       <label>Images (Max 15)</label>
       <div class="image-grid" id="p-img-grid"></div>
       <div class="upload-box" onclick="document.getElementById('p-file').click()">📸 ADD IMAGE</div>
-      <input type="file" id="p-file" hidden onchange="uploadProductImage(this)">
+      <input type="file" id="p-file" hidden onchange="cloudinary-patch.js(this)">
       <div class="grid-2">
         <input type="number" id="p-real" placeholder="Real Price">
         <input type="number" id="p-disc" placeholder="Discounted Price">
@@ -187,7 +187,7 @@ canvas { max-height: 260px; }
       <input type="hidden" id="c-id">
       <input type="text" id="c-name" placeholder="Category Name">
       <div class="upload-box" onclick="document.getElementById('c-file').click()">📸 UPLOAD ICON</div>
-      <input type="file" id="c-file" hidden onchange="uploadImage(this,'c-img','prev-c','c-up-btn')">
+      <input type="file" id="c-file" hidden onchange="cloudinary-patch.js(this,'c-img','prev-c','c-up-btn')">
       <input type="text" id="c-img" placeholder="Icon URL">
       <img id="prev-c" class="img-preview">
       <button class="btn" id="btn-save-c" onclick="saveCategory()"><span>SAVE</span><div class="loader"></div></button>
@@ -365,19 +365,19 @@ canvas { max-height: 260px; }
       <input type="text" id="s-name" placeholder="Store Name">
       <label>Header Logo</label>
       <div class="upload-box" onclick="document.getElementById('f-h').click()">📸 Upload</div>
-      <input type="file" id="f-h" hidden onchange="uploadImage(this,'s-logo','prev-logo','uh')">
+      <input type="file" id="f-h" hidden onchange="cloudinary-patch.js(this,'s-logo','prev-logo','uh')">
       <input type="text" id="s-logo"><img id="prev-logo" class="img-preview">
       <label>Footer Logo</label>
       <div class="upload-box" onclick="document.getElementById('f-f').click()">📸 Upload</div>
-      <input type="file" id="f-f" hidden onchange="uploadImage(this,'s-footer','prev-footer','uf')">
+      <input type="file" id="f-f" hidden onchange="cloudinary-patch.js(this,'s-footer','prev-footer','uf')">
       <input type="text" id="s-footer"><img id="prev-footer" class="img-preview">
       <label>Hero Image</label>
       <div class="upload-box" onclick="document.getElementById('f-hr').click()">📸 Upload</div>
-      <input type="file" id="f-hr" hidden onchange="uploadImage(this,'s-hero','prev-hero','uhr')">
+      <input type="file" id="f-hr" hidden onchange="cloudinary-patch.js(this,'s-hero','prev-hero','uhr')">
       <input type="text" id="s-hero"><img id="prev-hero" class="img-preview">
       <label>Favicon</label>
       <div class="upload-box" onclick="document.getElementById('f-fav').click()">📸 Upload</div>
-      <input type="file" id="f-fav" hidden onchange="uploadImage(this,'s-fav','prev-fav','ufav')">
+      <input type="file" id="f-fav" hidden onchange="cloudinary-patch.js(this,'s-fav','prev-fav','ufav')">
       <input type="text" id="s-fav"><img id="prev-fav" class="img-preview">
       <button class="btn" onclick="saveMeta(this,'brand')"><span>UPDATE IDENTITY</span><div class="loader"></div></button>
     </div>
@@ -478,7 +478,7 @@ window.showTab = (t) => {
 };
 
 // ====== IMAGE UPLOAD ======
-window.uploadImage = async (input, urlId, prevId, boxId) => {
+window.cloudinary-patch.js = async (input, urlId, prevId, boxId) => {
   if(!input.files[0]) return;
   const f = new FormData(); f.append("image", input.files[0]);
   try {
@@ -492,7 +492,7 @@ window.uploadImage = async (input, urlId, prevId, boxId) => {
     }
   } catch(e) { showToast("Upload Failed",'error'); }
 };
-window.uploadProductImage = async (input) => {
+window.cloudinary-patch.js = async (input) => {
   if(!input.files[0]) return;
   if(currentProductImages.length>=15) { showToast("Max 15 Images!",'error'); return; }
   const f = new FormData(); f.append("image", input.files[0]);
