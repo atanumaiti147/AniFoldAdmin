@@ -61,10 +61,7 @@ switch ($action) {
 // ============================================================
 function handleRazorpay() {
     global $RAZORPAY_KEY_ID, $RAZORPAY_KEY_SECRET;
-    require('razorpay-php/Razorpay.php');
-    use Razorpay\Api\Api;
 
-    $api  = new Api($RAZORPAY_KEY_ID, $RAZORPAY_KEY_SECRET);
     $data = json_decode(file_get_contents("php://input"));
 
     if (empty($data->amount) || !is_numeric($data->amount)) {
@@ -73,19 +70,45 @@ function handleRazorpay() {
         exit();
     }
 
-    $orderData = [
-        'receipt'         => 'rcptid_' . time(),
-        'amount'          => $data->amount,
+    // Create order using Razorpay REST API directly (no SDK needed)
+    $orderData = json_encode([
+        'receipt'         => 'rcpt_' . time(),
+        'amount'          => (int)$data->amount,
         'currency'        => 'INR',
         'payment_capture' => 1
-    ];
+    ]);
 
-    try {
-        $razorpayOrder = $api->order->create($orderData);
-        echo json_encode(['order_id' => $razorpayOrder['id']]);
-    } catch (Exception $e) {
+    $ch = curl_init('https://api.razorpay.com/v1/orders');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $orderData,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'Authorization: Basic ' . base64_encode($RAZORPAY_KEY_ID . ':' . $RAZORPAY_KEY_SECRET),
+        ],
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_TIMEOUT        => 15,
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlErr) {
         http_response_code(500);
-        echo json_encode(['error' => 'Razorpay Error: ' . $e->getMessage()]);
+        echo json_encode(['error' => 'Network error: ' . $curlErr]);
+        exit();
+    }
+
+    $result = json_decode($response, true);
+
+    if ($httpCode === 200 && isset($result['id'])) {
+        echo json_encode(['order_id' => $result['id']]);
+    } else {
+        http_response_code(500);
+        echo json_encode(['error' => 'Razorpay error', 'details' => $result]);
     }
 }
 
