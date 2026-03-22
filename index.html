@@ -436,32 +436,6 @@ label{display:block;font-size:.72rem;color:var(--mt);font-weight:700;text-transf
       <button class="btn" id="btn-brand" onclick="saveMeta('brand',this)"><div class="ldr"></div><span class="bt">💾 SAVE BRAND</span></button>
     </div>
 
-    <!-- TELEGRAM -->
-    <div class="card" style="border-color:#2AABEE;">
-      <h4 style="color:#2AABEE;margin-bottom:4px;">✈️ TELEGRAM NOTIFICATIONS</h4>
-      <div class="ib" style="margin-bottom:10px;">
-        <b>Step 1:</b> Telegram → @BotFather → /newbot → copy <b>Bot Token</b><br>
-        <b>Step 2:</b> Start your bot → visit:<br>
-        &nbsp;&nbsp;<small>https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</small><br>
-        &nbsp;&nbsp;→ find <b>chat.id</b> → paste below<br>
-        <b>Notifications:</b> New Orders, User Signups, Contact Messages, Order Status, Reviews
-      </div>
-      <div id="tg-status" style="font-size:.78rem;color:#2AABEE;margin-bottom:8px;"></div>
-      <label>Bot Username (without @)</label>
-      <input type="text" id="tg-username" placeholder="e.g. anifold_bot">
-      <label>Bot Token</label>
-      <input type="text" id="tg-token" placeholder="1234567890:ABCdefGHI...">
-      <label>Chat ID (your account or group)</label>
-      <input type="text" id="tg-chat-id" placeholder="e.g. 123456789 or -100987654321">
-      <button class="btn" style="background:#2AABEE;margin-bottom:6px;" onclick="saveTelegram()"><span class="bt">💾 SAVE TELEGRAM CONFIG</span></button>
-      <button class="btn" style="background:#111;border:1.5px solid #2AABEE;" onclick="testTelegram()"><span class="bt">🧪 TEST — SEND MESSAGE</span></button>
-      <button class="btn" style="background:#0f172a;border:1px solid #444;margin-top:6px;" onclick="registerWebhook()"><span class="bt">🔗 REGISTER WEBHOOK (once)</span></button>
-      <div class="ib" style="margin-top:8px;font-size:.75rem;">
-        <b>Webhook URL:</b> https://craftyam.anifold.shop/telegram_bot.php<br>
-        Upload <b>telegram_bot.php</b> to your server, fill in BOT_TOKEN + CHAT_ID + Firebase Secret, then click Register Webhook once.
-      </div>
-    </div>
-
     <!-- CONTACT -->
     <div class="card">
       <h4 style="margin-bottom:4px;">📞 CONTACT & SOCIAL LINKS</h4>
@@ -543,65 +517,6 @@ const db   = firebase.database();
 let CLD = '', CPRE = '';
 function loadCld() { CLD = localStorage.getItem('cld_n') || ''; CPRE = localStorage.getItem('cld_p') || ''; }
 loadCld();
-
-// ====== TELEGRAM CONFIG ======
-async function saveTelegram() {
-  const token  = document.getElementById('tg-token').value.trim();
-  const chatId = document.getElementById('tg-chat-id').value.trim();
-  if(!token || !chatId) { toast('Enter both Bot Token and Chat ID', 'e'); return; }
-  const uname = document.getElementById('tg-username').value.trim().replace('@','');
-  await db.ref('meta/telegram').set({ botToken: token, chatId: chatId, botUsername: uname });
-  document.getElementById('tg-status').innerHTML = '<span style="color:var(--g)">✅ Saved! Send a test message to verify.</span>';
-  toast('Telegram config saved ✅', 's');
-}
-
-async function registerWebhook() {
-  const token = document.getElementById('tg-token').value.trim();
-  if(!token) { toast('Enter Bot Token first', 'e'); return; }
-  const webhookUrl = 'https://craftyam.anifold.shop/telegram_bot.php';
-  const apiUrl = `https://api.telegram.org/bot${token}/setWebhook?url=${encodeURIComponent(webhookUrl)}`;
-  try {
-    const r = await fetch(apiUrl);
-    const d = await r.json();
-    if(d.ok) {
-      document.getElementById('tg-status').innerHTML = '<span style="color:var(--g)">✅ Webhook registered! Bot is now active.</span>';
-      toast('Webhook registered! Bot is live ✅', 's');
-    } else {
-      toast('Failed: ' + d.description, 'e');
-    }
-  } catch(e) {
-    toast('Network error', 'e');
-  }
-}
-
-async function testTelegram() {
-  const token  = document.getElementById('tg-token').value.trim();
-  const chatId = document.getElementById('tg-chat-id').value.trim();
-  if(!token || !chatId) { toast('Save config first', 'e'); return; }
-  document.getElementById('tg-status').innerHTML = '<span style="color:#2AABEE">⏳ Sending test...</span>';
-  try {
-    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: '✅ <b>Anifold Telegram Connected!</b>\n\n🎉 Your admin notifications are now active.\n\nYou will receive alerts for:\n• 🛒 New orders\n• 👤 New user signups\n• 💬 Contact messages\n• ⭐ New reviews',
-        parse_mode: 'HTML'
-      })
-    });
-    const d = await r.json();
-    if(d.ok) {
-      document.getElementById('tg-status').innerHTML = '<span style="color:var(--g)">✅ Test sent! Check your Telegram.</span>';
-      toast('Test message sent! Check Telegram ✅', 's');
-    } else {
-      document.getElementById('tg-status').innerHTML = '<span style="color:var(--r)">❌ ' + (d.description || 'Failed') + '</span>';
-      toast('Failed: ' + (d.description || 'Check token/chat ID'), 'e');
-    }
-  } catch(e) {
-    document.getElementById('tg-status').innerHTML = '<span style="color:var(--r)">❌ Network error</span>';
-    toast('Network error — check connection', 'e');
-  }
-}
 
 function saveCloudinary() {
   const n = document.getElementById('cld-name').value.trim();
@@ -930,27 +845,7 @@ function renderOrders() {
     '</div>';
   });
 }
-window.setStatus = function(id, st) {
-  db.ref('orders/' + id).update({ status: st }).then(async function() {
-    toast('Status: ' + st, 's'); renderOrders();
-    try {
-      const tgCfg = (await db.ref('meta/telegram').once('value')).val();
-      if(tgCfg && tgCfg.botToken && tgCfg.chatId) {
-        const emojis = { completed: '✅', pending: '⏳', refunded: '↩️', cancelled: '❌' };
-        fetch('https://api.telegram.org/bot'+tgCfg.botToken+'/sendMessage', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({
-            chat_id: tgCfg.chatId,
-            text: (emojis[st]||'📦') + ' <b>ORDER STATUS UPDATED</b>\n\n' +
-                  'Order ID: ' + id + '\nNew Status: <b>' + st.toUpperCase() + '</b>\n' +
-                  '📅 ' + new Date().toLocaleString('en-IN'),
-            parse_mode: 'HTML'
-          })
-        }).catch(function(){});
-      }
-    } catch(e) {}
-  });
-};
+window.setStatus = function(id, st) { db.ref('orders/' + id).update({ status: st }).then(function() { toast('Status: ' + st, 's'); renderOrders(); }); };
 
 window.printInvoice = function(id) {
   const o = allOrders.find(function(x) { return x.key === id; });
@@ -1138,24 +1033,7 @@ window.loadReviews = function(filter) {
     if (!count) l.innerHTML = '<div style="text-align:center;padding:28px;color:var(--mt);">No ' + filter + ' reviews.</div>';
   });
 };
-window.apprRev = function(pid, rid, val) { db.ref('reviews/'+pid+'/'+rid).update({ approved: val }).then(async function() {
-    toast(val ? 'Approved ✅' : 'Unapproved', 's'); loadReviews('all');
-    if(val) {
-      try {
-        const tgCfg = (await db.ref('meta/telegram').once('value')).val();
-        if(tgCfg && tgCfg.botToken && tgCfg.chatId) {
-          fetch('https://api.telegram.org/bot'+tgCfg.botToken+'/sendMessage', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({
-              chat_id: tgCfg.chatId,
-              text: '⭐ <b>REVIEW APPROVED</b>\n\nProduct: '+pid+'\nReview: '+rid+'\n📅 '+new Date().toLocaleString('en-IN'),
-              parse_mode: 'HTML'
-            })
-          }).catch(function(){});
-        }
-      } catch(e) {}
-    }
-  }); };
+window.apprRev = function(pid, rid, val) { db.ref('reviews/'+pid+'/'+rid).update({ approved: val }).then(function() { toast(val ? 'Approved ✅' : 'Unapproved', 's'); loadReviews('all'); }); };
 window.delRev  = function(pid, rid) { if (confirm('Delete this review?')) db.ref('reviews/'+pid+'/'+rid).remove().then(function() { toast('Deleted', 's'); loadReviews('all'); }); };
 
 // ================================================================
@@ -1543,14 +1421,6 @@ function initData() {
       document.getElementById('ct-ig').value     = v.contact.instagram  || '';
       document.getElementById('ct-yt').value     = v.contact.youtube    || '';
       document.getElementById('ct-msg').value    = v.contact.message    || '';
-    }
-    // Prefill Telegram
-    if (v.telegram) {
-      if(v.telegram.botUsername) document.getElementById('tg-username').value = v.telegram.botUsername;
-      if(v.telegram.botToken) document.getElementById('tg-token').value = v.telegram.botToken;
-      if(v.telegram.chatId)   document.getElementById('tg-chat-id').value = v.telegram.chatId;
-      if(v.telegram.botToken && v.telegram.chatId)
-        document.getElementById('tg-status').innerHTML = '<span style="color:var(--g)">✅ Connected — notifications active</span>';
     }
     if (v.policies) {
       document.getElementById('pol-terms').value = v.policies.terms   || '';
