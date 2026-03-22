@@ -377,8 +377,10 @@ label{display:block;font-size:.72rem;color:var(--mt);font-weight:700;text-transf
       </div>
       <div class="ib" style="margin-bottom:10px;">
         <b>Step 1:</b> cloudinary.com → Login → Dashboard → Copy <b>Cloud Name</b><br>
-        <b>Step 2:</b> Settings → Upload → Upload Presets → Add New → Signing Mode: <b>Unsigned</b> → Save → Copy preset name<br>
-        <b>Note:</b> Saved in this browser only. You must enter this on every new browser/device.
+        <b>Step 2:</b> Settings → Upload tab → Upload Presets → Add Preset<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;→ Signing Mode: <b style="color:var(--g)">Unsigned</b> (NOT Signed!) → Save → Copy preset name<br>
+        <b>⚠️ Common error:</b> "whitelisted for unsigned" = preset is Signed, change to <b>Unsigned</b><br>
+        <b>Note:</b> Config saved in this browser only.
       </div>
       <label>Cloud Name</label><input type="text" id="cld-name" placeholder="e.g. di1mnrg0l">
       <label>Upload Preset (Unsigned)</label><input type="text" id="cld-preset" placeholder="e.g. ml_default">
@@ -538,7 +540,16 @@ async function cloudUp(file, folder) {
   const r = await fetch('https://api.cloudinary.com/v1_1/' + CLD + '/image/upload', { method: 'POST', body: fd });
   const d = await r.json();
   if (d.secure_url) return d.secure_url;
-  throw new Error(d.error ? d.error.message : 'Upload failed');
+  // Friendly error messages for common Cloudinary issues
+  var msg = d.error ? d.error.message : 'Upload failed';
+  if(msg.includes('whitelisted') || msg.includes('unsigned')) {
+    msg = 'Preset "' + CPRE + '" is SIGNED. Fix: cloudinary.com → Settings → Upload → Upload Presets → Edit → Signing Mode = Unsigned → Save';
+  } else if(msg.includes('cloud_name') || msg.includes('not found')) {
+    msg = 'Wrong Cloud Name "' + CLD + '". Check: cloudinary.com → Dashboard → Cloud Name';
+  } else if(msg.includes('preset') && msg.includes('not found')) {
+    msg = 'Preset "' + CPRE + '" not found. Check: cloudinary.com → Settings → Upload → Upload Presets';
+  }
+  throw new Error(msg);
 }
 
 // ================================================================
