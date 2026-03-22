@@ -1,25 +1,30 @@
 <?php
 // ============================================================
-// ANIFOLD STORE — create_order.php (COMPLETE VERSION)
+// ANIFOLD STORE — create_order.php (FULL ADVANCED VERSION v3.0)
 //
-// EMAIL TRIGGERS (ab har jagah se call hoga):
-//   ?action=order_email    → Purchase ke baad confirmation
-//   ?action=welcome_email  → Naya account banane pe
-//   ?action=reset_email    → Password reset
-//   ?action=contact_email  → Contact form submit hone pe
-//   ?action=upload_image   → Cloudinary mein image upload
-//   (koi action nahi)      → Razorpay order create (original)
+// ACTIONS:
+//   (no action)            → Razorpay order create
+//   ?action=order_email    → Purchase ke baad confirmation email
+//   ?action=welcome_email  → Naya account welcome email
+//   ?action=reset_email    → Password reset email
+//   ?action=contact_email  → Contact form reply email
+//   ?action=upload_image   → Cloudinary image upload
+//   ?action=tg_order       → Telegram: Naya order notification (ADMIN)
+//   ?action=tg_welcome     → Telegram: Naya user registered (ADMIN)
+//   ?action=tg_contact     → Telegram: Contact form message (ADMIN)
+//   ?action=tg_daily       → Telegram: Daily report (cron se)
+//   ?action=tg_test        → Telegram: Test message bhejo
 // ============================================================
 
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$origin  = $_SERVER['HTTP_ORIGIN'] ?? '';
 $allowed = ['https://anifold.shop', 'https://craftyam.anifold.shop'];
-if(in_array($origin, $allowed)) {
+if (in_array($origin, $allowed)) {
     header("Access-Control-Allow-Origin: $origin");
 } else {
     header("Access-Control-Allow-Origin: https://anifold.shop");
 }
 header("Access-Control-Allow-Headers: Content-Type");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Methods: POST, OPTIONS, GET");
 header("Content-Type: application/json; charset=UTF-8");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -29,35 +34,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // ====================================================
 // APNI KEYS YAHAN DAALEIN
 // ====================================================
-$RAZORPAY_KEY_ID     = "rzp_live_RzjzE21QYwmsqE";      // Aapka existing key (same)
-$RAZORPAY_KEY_SECRET = "1NhInpsQLAeYbjsLE63oXvSH";     // Aapka existing secret (same)
 
-// Resend: resend.com → Sign up (free) → API Keys → Create Key
+// Razorpay (same as before - unchanged)
+$RAZORPAY_KEY_ID     = "rzp_live_RzjzE21QYwmsqE";
+$RAZORPAY_KEY_SECRET = "1NhInpsQLAeYbjsLE63oXvSH";
+
+// Resend Email (same as before - unchanged)
 $RESEND_API_KEY = "re_NDfXidA1_3bAJr9iNLuH9Dtcevud4TCf2";
+$FROM_EMAIL     = "noreply@anifold.shop";
+$FROM_NAME      = "Anifold Store";
 
-// Email sender (resend mein domain verify karo pehle - neeche guide hai)
-$FROM_EMAIL = "noreply@anifold.shop";
-$FROM_NAME  = "Anifold Store";
-
-// Cloudinary: cloudinary.com → Sign up → Dashboard se copy karo
+// Cloudinary (same as before - unchanged)
 $CLOUDINARY_CLOUD  = "di1mnrg0l";
 $CLOUDINARY_KEY    = "855961983548569";
 $CLOUDINARY_SECRET = "Ih_dYF98_M8wSL0BihhTrQTTTcI";
+
+// ====================================================
+// 🤖 TELEGRAM CONFIG — SIRF YE 2 CHEEZEIN DAALNI HAIN
+//
+// Step 1: Telegram pe @BotFather ko message karo
+//         → /newbot likhke token copy karo
+// Step 2: @userinfobot ko /start bhejo
+//         → Chat ID copy karo
+// Step 3: Neeche dono paste karo
+// ====================================================
+$TELEGRAM_BOT_TOKEN     = "YAHAN_APNA_BOT_TOKEN_DAALO";   // e.g. "7123456789:AAFxxx..."
+$TELEGRAM_ADMIN_CHAT_ID = "YAHAN_APNA_CHAT_ID_DAALO";     // e.g. "987654321"
+
+// Cron job ke liye secret (koi bhi string rakh sakte ho)
+$CRON_SECRET = "anifold_cron_secret_2025";
+
 // ====================================================
 
 $action = $_GET['action'] ?? 'create_order';
 
 switch ($action) {
-    case 'order_email':   handleOrderEmail();   break;
-    case 'welcome_email': handleWelcomeEmail(); break;
-    case 'reset_email':   handleResetEmail();   break;
-    case 'contact_email': handleContactEmail(); break;
-    case 'upload_image':  handleImageUpload();  break;
-    default:              handleRazorpay();     break;
+    // Email actions
+    case 'order_email':   handleOrderEmail();    break;
+    case 'welcome_email': handleWelcomeEmail();  break;
+    case 'reset_email':   handleResetEmail();    break;
+    case 'contact_email': handleContactEmail();  break;
+    // Image upload
+    case 'upload_image':  handleImageUpload();   break;
+    // Telegram actions (NEW)
+    case 'tg_order':      handleTgOrder();       break;
+    case 'tg_welcome':    handleTgWelcome();     break;
+    case 'tg_contact':    handleTgContact();     break;
+    case 'tg_daily':      handleTgDailyReport(); break;
+    case 'tg_test':       handleTgTest();        break;
+    // Default: Razorpay
+    default:              handleRazorpay();      break;
 }
 
 // ============================================================
-// RAZORPAY — ORIGINAL CODE (kuch nahi badla)
+// RAZORPAY — ORIGINAL CODE (UNCHANGED)
 // ============================================================
 function handleRazorpay() {
     global $RAZORPAY_KEY_ID, $RAZORPAY_KEY_SECRET;
@@ -70,7 +100,6 @@ function handleRazorpay() {
         exit();
     }
 
-    // Create order using Razorpay REST API directly (no SDK needed)
     $orderData = json_encode([
         'receipt'         => 'rcpt_' . time(),
         'amount'          => (int)$data->amount,
@@ -113,7 +142,7 @@ function handleRazorpay() {
 }
 
 // ============================================================
-// EMAIL 1: ORDER CONFIRMATION — Purchase ke turant baad
+// EMAIL 1: ORDER CONFIRMATION (ORIGINAL — UNCHANGED)
 // ============================================================
 function handleOrderEmail() {
     $d          = getInput();
@@ -130,7 +159,7 @@ function handleOrderEmail() {
 }
 
 // ============================================================
-// EMAIL 2: WELCOME — Naya account banane pe
+// EMAIL 2: WELCOME (ORIGINAL — UNCHANGED)
 // ============================================================
 function handleWelcomeEmail() {
     $d        = getInput();
@@ -143,7 +172,7 @@ function handleWelcomeEmail() {
 }
 
 // ============================================================
-// EMAIL 3: PASSWORD RESET
+// EMAIL 3: PASSWORD RESET (ORIGINAL — UNCHANGED)
 // ============================================================
 function handleResetEmail() {
     $d          = getInput();
@@ -157,21 +186,22 @@ function handleResetEmail() {
 }
 
 // ============================================================
-// EMAIL 4: CONTACT FORM REPLY
+// EMAIL 4: CONTACT FORM (ORIGINAL — UNCHANGED)
 // ============================================================
 function handleContactEmail() {
     global $RESEND_API_KEY, $FROM_EMAIL, $FROM_NAME;
+
     $d        = getInput();
     $to_email = validateEmail($d['to_email'] ?? '');
     $to_name  = clean($d['to_name'] ?? 'Customer');
     $message  = clean($d['message'] ?? '');
 
-    // 1. Send confirmation to customer
+    // Customer ko confirmation
     $subject = "Aapka Message Mila — Anifold Store";
     $html    = tpl_contact($to_name, $message);
     resend($to_email, $to_name, $subject, $html);
 
-    // 2. Notify admin (atanumaity92048@gmail.com) about new message
+    // Admin ko email notification
     $admin_html = '<html><body style="font-family:Arial;padding:20px;">
         <h2 style="color:#702122;">New Contact Message!</h2>
         <p><b>From:</b> ' . $to_name . ' (' . $to_email . ')</p>
@@ -179,12 +209,14 @@ function handleContactEmail() {
         <blockquote style="background:#f5f5f5;padding:12px;border-left:4px solid #702122;">' . $message . '</blockquote>
         <p><a href="mailto:' . $to_email . '" style="background:#702122;color:white;padding:10px 20px;text-decoration:none;border-radius:6px;">Reply to Customer</a></p>
     </body></html>';
+
     $admin_payload = json_encode([
         'from'    => "{$FROM_NAME} <{$FROM_EMAIL}>",
         'to'      => ['atanumaity92048@gmail.com'],
         'subject' => "New Contact: $to_name wants to connect",
         'html'    => $admin_html,
     ]);
+
     $ch2 = curl_init('https://api.resend.com/emails');
     curl_setopt_array($ch2, [
         CURLOPT_RETURNTRANSFER => true,
@@ -192,11 +224,12 @@ function handleContactEmail() {
         CURLOPT_POSTFIELDS     => $admin_payload,
         CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'Authorization: Bearer ' . $RESEND_API_KEY],
     ]);
-    curl_exec($ch2); curl_close($ch2);
+    curl_exec($ch2);
+    curl_close($ch2);
 }
 
 // ============================================================
-// CLOUDINARY IMAGE UPLOAD
+// CLOUDINARY IMAGE UPLOAD (ORIGINAL — UNCHANGED)
 // ============================================================
 function handleImageUpload() {
     global $CLOUDINARY_CLOUD, $CLOUDINARY_KEY, $CLOUDINARY_SECRET;
@@ -235,7 +268,13 @@ function handleImageUpload() {
 
     if ($code === 200) {
         $data = json_decode($response, true);
-        echo json_encode(['success' => true, 'url' => $data['secure_url'], 'format' => $data['format'], 'width' => $data['width'], 'height' => $data['height']]);
+        echo json_encode([
+            'success' => true,
+            'url'     => $data['secure_url'],
+            'format'  => $data['format'],
+            'width'   => $data['width'],
+            'height'  => $data['height']
+        ]);
     } else {
         http_response_code(500);
         echo json_encode(['error' => 'Upload failed', 'details' => $response]);
@@ -243,7 +282,180 @@ function handleImageUpload() {
 }
 
 // ============================================================
-// RESEND API SENDER
+// 🤖 TELEGRAM — CORE SENDER (NEW)
+// ============================================================
+function sendTelegram($message) {
+    global $TELEGRAM_BOT_TOKEN, $TELEGRAM_ADMIN_CHAT_ID;
+
+    if ($TELEGRAM_BOT_TOKEN === "YAHAN_APNA_BOT_TOKEN_DAALO") {
+        echo json_encode(['success' => false, 'error' => 'Telegram configure nahi kiya. BOT_TOKEN daalo.']);
+        return false;
+    }
+
+    $url  = "https://api.telegram.org/bot{$TELEGRAM_BOT_TOKEN}/sendMessage";
+    $data = json_encode([
+        'chat_id'    => $TELEGRAM_ADMIN_CHAT_ID,
+        'text'       => $message,
+        'parse_mode' => 'HTML'
+    ]);
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $data,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_SSL_VERIFYPEER => true,
+    ]);
+
+    $response = curl_exec($ch);
+    $code     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    return $code === 200;
+}
+
+// ============================================================
+// 🤖 TELEGRAM 1: NAYA ORDER NOTIFICATION (NEW)
+// Frontend se call: ?action=tg_order
+// Body: { item, price, email, customer_name, payment_id }
+// ============================================================
+function handleTgOrder() {
+    $d          = getInput();
+    $item       = clean($d['item'] ?? 'Unknown Product');
+    $price      = clean($d['price'] ?? '0');
+    $email      = clean($d['email'] ?? 'Unknown');
+    $name       = clean($d['customer_name'] ?? 'Customer');
+    $payment_id = clean($d['payment_id'] ?? 'N/A');
+    $date       = date('d M Y, h:i A');
+
+    $msg = "🛒 <b>NAYA ORDER AAYA!</b>\n\n"
+         . "━━━━━━━━━━━━━━━━━━━━\n"
+         . "🎌 <b>Product:</b> {$item}\n"
+         . "💰 <b>Amount:</b> ₹{$price}\n"
+         . "👤 <b>Customer:</b> {$name}\n"
+         . "📧 <b>Email:</b> {$email}\n"
+         . "🔑 <b>Payment ID:</b> <code>{$payment_id}</code>\n"
+         . "📅 <b>Date:</b> {$date}\n"
+         . "━━━━━━━━━━━━━━━━━━━━\n"
+         . "✅ Payment confirmed! Download ready hai.";
+
+    $ok = sendTelegram($msg);
+    echo json_encode(['success' => $ok]);
+}
+
+// ============================================================
+// 🤖 TELEGRAM 2: NAYA USER REGISTERED (NEW)
+// Frontend se call: ?action=tg_welcome
+// Body: { name, email }
+// ============================================================
+function handleTgWelcome() {
+    $d     = getInput();
+    $name  = clean($d['name'] ?? 'New User');
+    $email = clean($d['email'] ?? 'Unknown');
+    $date  = date('d M Y, h:i A');
+
+    $msg = "🆕 <b>NAYA USER REGISTER HUA!</b>\n\n"
+         . "━━━━━━━━━━━━━━━━━━━━\n"
+         . "👤 <b>Name:</b> {$name}\n"
+         . "📧 <b>Email:</b> {$email}\n"
+         . "📅 <b>Date:</b> {$date}\n"
+         . "━━━━━━━━━━━━━━━━━━━━\n"
+         . "🎊 Anifold pe naya member aaya!";
+
+    $ok = sendTelegram($msg);
+    echo json_encode(['success' => $ok]);
+}
+
+// ============================================================
+// 🤖 TELEGRAM 3: CONTACT FORM MESSAGE (NEW)
+// Frontend se call: ?action=tg_contact
+// Body: { name, email, message }
+// ============================================================
+function handleTgContact() {
+    $d       = getInput();
+    $name    = clean($d['name'] ?? 'Someone');
+    $email   = clean($d['email'] ?? 'Unknown');
+    $message = clean($d['message'] ?? '');
+    $date    = date('d M Y, h:i A');
+
+    $msg = "📩 <b>NAYA CONTACT MESSAGE!</b>\n\n"
+         . "━━━━━━━━━━━━━━━━━━━━\n"
+         . "👤 <b>Name:</b> {$name}\n"
+         . "📧 <b>Email:</b> {$email}\n"
+         . "💬 <b>Message:</b>\n<i>{$message}</i>\n"
+         . "📅 <b>Date:</b> {$date}\n"
+         . "━━━━━━━━━━━━━━━━━━━━\n"
+         . "↩️ Reply: {$email}";
+
+    $ok = sendTelegram($msg);
+    echo json_encode(['success' => $ok]);
+}
+
+// ============================================================
+// 🤖 TELEGRAM 4: DAILY REPORT (NEW)
+// Cron se call karo:
+// 0 22 * * * curl "https://craftyam.anifold.shop/create_order.php?action=tg_daily&secret=anifold_cron_secret_2025"
+// Body (optional): { total_orders, total_revenue, new_users }
+// ============================================================
+function handleTgDailyReport() {
+    global $CRON_SECRET;
+
+    $secret = $_GET['secret'] ?? '';
+    if ($secret !== $CRON_SECRET) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit();
+    }
+
+    $d            = getInput();
+    $total_orders = (int)($d['total_orders'] ?? 0);
+    $total_rev    = (string)($d['total_revenue'] ?? '0');
+    $new_users    = (int)($d['new_users'] ?? 0);
+    $date         = date('d M Y');
+
+    $msg = "📊 <b>ANIFOLD DAILY REPORT</b>\n"
+         . "📅 <b>{$date}</b>\n\n"
+         . "━━━━━━━━━━━━━━━━━━━━\n"
+         . "🛒 <b>Aaj ke Orders:</b> {$total_orders}\n"
+         . "💰 <b>Aaj ki Revenue:</b> ₹{$total_rev}\n"
+         . "👥 <b>Naye Users:</b> {$new_users}\n"
+         . "━━━━━━━━━━━━━━━━━━━━\n"
+         . "💪 Keep crushing it! — Anifold Store";
+
+    $ok = sendTelegram($msg);
+    echo json_encode(['success' => $ok]);
+}
+
+// ============================================================
+// 🤖 TELEGRAM 5: TEST MESSAGE (NEW)
+// Admin panel se "Test" button pe click karo
+// URL: ?action=tg_test (GET request bhi kaam karega)
+// ============================================================
+function handleTgTest() {
+    $date = date('d M Y, h:i A');
+
+    $msg = "✅ <b>ANIFOLD BOT CONNECTED!</b>\n\n"
+         . "Ye ek test message hai.\n"
+         . "📅 {$date}\n\n"
+         . "🎉 Ab aapko har:\n"
+         . "• Naye order ka\n"
+         . "• Naye user ka\n"
+         . "• Contact message ka\n"
+         . "notification yahan milega!";
+
+    $ok = sendTelegram($msg);
+    echo json_encode([
+        'success' => $ok,
+        'message' => $ok
+            ? 'Test message bhej diya! Telegram check karo.'
+            : 'Failed — BOT_TOKEN ya CHAT_ID galat hai.'
+    ]);
+}
+
+// ============================================================
+// RESEND API SENDER (ORIGINAL — UNCHANGED)
 // ============================================================
 function resend($to_email, $to_name, $subject, $html) {
     global $RESEND_API_KEY, $FROM_EMAIL, $FROM_NAME;
@@ -280,7 +492,7 @@ function resend($to_email, $to_name, $subject, $html) {
 }
 
 // ============================================================
-// HELPERS
+// HELPERS (ORIGINAL — UNCHANGED)
 // ============================================================
 function getInput()        { return json_decode(file_get_contents("php://input"), true) ?? []; }
 function clean($v)         { return htmlspecialchars(strip_tags(trim($v))); }
@@ -289,6 +501,10 @@ function validateEmail($e) {
     if (!$clean) { http_response_code(400); echo json_encode(['error' => 'Invalid email']); exit(); }
     return $clean;
 }
+
+// ============================================================
+// EMAIL WRAPPER (ORIGINAL — UNCHANGED)
+// ============================================================
 function wrap($color, $badge, $content) {
     return '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,sans-serif;">
@@ -312,7 +528,7 @@ function wrap($color, $badge, $content) {
 }
 
 // ============================================================
-// EMAIL TEMPLATES
+// EMAIL TEMPLATES (ORIGINAL — UNCHANGED)
 // ============================================================
 
 function tpl_order($name, $product, $total, $date, $pid) {
