@@ -370,12 +370,15 @@ label{display:block;font-size:.72rem;color:var(--mt);font-weight:700;text-transf
     </div>
 
     <!-- CLOUDINARY -->
-    <div class="card" style="border-color:var(--o);">
+    <div class="card" id="cld-card" style="border-color:var(--o);">
       <h4 style="color:var(--o);margin-bottom:4px;">☁️ CLOUDINARY (Image Upload)</h4>
+      <div id="cld-warning" class="wbox" style="display:none;border-color:var(--r);background:rgba(255,42,109,0.08);color:#fff;">
+        ⚠️ <b style="color:var(--r)">Cloudinary not configured!</b> You must enter Cloud Name + Preset below and click Save before uploading any images.
+      </div>
       <div class="ib" style="margin-bottom:10px;">
         <b>Step 1:</b> cloudinary.com → Login → Dashboard → Copy <b>Cloud Name</b><br>
         <b>Step 2:</b> Settings → Upload → Upload Presets → Add New → Signing Mode: <b>Unsigned</b> → Save → Copy preset name<br>
-        <b>Note:</b> Saved in browser (localStorage). Enter once per browser.
+        <b>Note:</b> Saved in this browser only. You must enter this on every new browser/device.
       </div>
       <label>Cloud Name</label><input type="text" id="cld-name" placeholder="e.g. di1mnrg0l">
       <label>Upload Preset (Unsigned)</label><input type="text" id="cld-preset" placeholder="e.g. ml_default">
@@ -520,7 +523,9 @@ function saveCloudinary() {
   CLD = n; CPRE = p;
   localStorage.setItem('cld_n', n); localStorage.setItem('cld_p', p);
   document.getElementById('cld-status').innerHTML = '<span style="color:var(--g)">✅ Active: <b>' + n + '</b> / ' + p + '</span>';
-  toast('Cloudinary saved ✅ — you can now upload images!', 's');
+  var w = document.getElementById('cld-warning');
+  if(w) w.style.display = 'none';
+  toast('Cloudinary saved ✅ — you can now upload images everywhere!', 's');
 }
 
 async function cloudUp(file, folder) {
@@ -600,7 +605,10 @@ auth.onAuthStateChanged(function(u) {
     if (CLD && CPRE) {
       document.getElementById('cld-status').innerHTML = '<span style="color:var(--g)">✅ Active: <b>' + CLD + '</b> / ' + CPRE + '</span>';
     } else {
-      document.getElementById('cld-status').innerHTML = '<span style="color:var(--r)">⚠️ Not configured — go to Settings → Cloudinary section</span>';
+      document.getElementById('cld-status').innerHTML = '<span style="color:var(--r)">⚠️ Not configured — enter Cloud Name + Preset below and Save</span>';
+      // Show warning box in cloudinary card
+      var w = document.getElementById('cld-warning');
+      if(w) w.style.display = 'block';
     }
     initData();
     loadFlashStatus();
@@ -633,6 +641,19 @@ window.tab = function(t, btn) {
 // ================================================================
 window.uploadSingle = async function(input, urlId, prevId) {
   if (!input.files[0]) return;
+  // Check Cloudinary FIRST before showing uploading state
+  loadCld();
+  if (!CLD || !CPRE) {
+    input.value = '';
+    toast('⚠️ Cloudinary not configured! Go to Settings → scroll down to ☁️ Cloudinary section → enter Cloud Name & Preset → Save', 'e');
+    // Auto-switch to settings tab and highlight cloudinary card
+    tab('settings', document.querySelectorAll('.tab')[10]);
+    setTimeout(function(){
+      var cldCard = document.getElementById('cld-name');
+      if(cldCard) { cldCard.scrollIntoView({behavior:'smooth', block:'center'}); cldCard.focus(); }
+    }, 300);
+    return;
+  }
   const box = input.previousElementSibling;
   if (box && box.classList.contains('upbox')) box.textContent = '⏳ Uploading...';
   try {
@@ -651,6 +672,18 @@ window.uploadSingle = async function(input, urlId, prevId) {
 
 window.uploadProdImg = async function(input) {
   if (!input.files[0]) return;
+  // Check Cloudinary FIRST
+  loadCld();
+  if (!CLD || !CPRE) {
+    input.value = '';
+    toast('⚠️ Cloudinary not set! Go to Settings → ☁️ Cloudinary section → enter Cloud Name & Preset → Save first', 'e');
+    tab('settings', document.querySelectorAll('.tab')[10]);
+    setTimeout(function(){
+      var cldCard = document.getElementById('cld-name');
+      if(cldCard) { cldCard.scrollIntoView({behavior:'smooth', block:'center'}); cldCard.focus(); }
+    }, 300);
+    return;
+  }
   if (pImgs.length >= 15) { toast('Maximum 15 images allowed', 'e'); return; }
   const box = document.getElementById('p-upbox');
   box.textContent = '⏳ Uploading ' + (pImgs.length + 1) + '/15...';
