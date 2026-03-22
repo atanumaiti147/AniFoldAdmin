@@ -410,12 +410,17 @@ label{display:block;font-size:.72rem;color:var(--mt);font-weight:700;text-transf
       <p style="font-size:.78rem;color:var(--mt);margin-bottom:12px;">Header logo, side menu logo, hero image, favicon — all update on store instantly. Leave empty to keep defaults.</p>
       <label>Store Name</label>
       <input type="text" id="b-name" placeholder="Anifold Store">
-      <label>Logo (Header + Side Menu) — leave empty for default</label>
-      <div class="upbox" onclick="document.getElementById('f-hl').click()">📸 Upload Logo via Cloudinary</div>
+      <label>Header Logo (Top bar) — leave empty for default</label>
+      <div class="upbox" onclick="document.getElementById('f-hl').click()">📸 Upload Header Logo via Cloudinary</div>
       <input type="file" id="f-hl" hidden accept="image/*" onchange="uploadSingle(this,'b-hlogo','p-hlogo')">
-      <input type="text" id="b-hlogo" placeholder="Logo URL (empty = use default Cloudinary logo)">
+      <input type="text" id="b-hlogo" placeholder="Header Logo URL (empty = use default)">
       <img id="p-hlogo" class="iprev">
-      <div class="wbox" style="margin-top:4px;">💡 To reset to default logo: clear this field and save.</div>
+      <label>Side Menu Logo (Left drawer) — leave empty to use same as header</label>
+      <div class="upbox" onclick="document.getElementById('f-sl').click()">📸 Upload Side Menu Logo via Cloudinary</div>
+      <input type="file" id="f-sl" hidden accept="image/*" onchange="uploadSingle(this,'b-slogo','p-slogo')">
+      <input type="text" id="b-slogo" placeholder="Side Menu Logo URL (empty = same as header logo)">
+      <img id="p-slogo" class="iprev">
+      <div class="wbox" style="margin-top:4px;">💡 To reset to default: clear the field and save. Side menu logo is shown in the dark drawer.</div>
       <label>Hero / Banner Image (Homepage right side)</label>
       <div class="upbox" onclick="document.getElementById('f-hero').click()">📸 Upload Hero Image via Cloudinary</div>
       <input type="file" id="f-hero" hidden accept="image/*" onchange="uploadSingle(this,'b-hero','p-hero')">
@@ -1164,7 +1169,7 @@ window.saveEmailJS = function() {
 window.saveMeta = function(type, btn) {
   if (btn) { btn.querySelector('.bt').textContent = 'Saving...'; btn.disabled = true; }
   let d = {};
-  if (type === 'brand')    d = { name: document.getElementById('b-name').value, headerLogoUrl: document.getElementById('b-hlogo').value, heroImageUrl: document.getElementById('b-hero').value, faviconUrl: document.getElementById('b-fav').value };
+  if (type === 'brand')    d = { name: document.getElementById('b-name').value, headerLogoUrl: document.getElementById('b-hlogo').value, sideLogoUrl: document.getElementById('b-slogo').value, heroImageUrl: document.getElementById('b-hero').value, faviconUrl: document.getElementById('b-fav').value };
   if (type === 'contact')  d = { whatsapp: document.getElementById('ct-wa').value, email: document.getElementById('ct-email').value, hours: document.getElementById('ct-hrs').value, address: document.getElementById('ct-addr').value, instagram: document.getElementById('ct-ig').value, youtube: document.getElementById('ct-yt').value, message: document.getElementById('ct-msg').value };
   if (type === 'policies') d = { terms: document.getElementById('pol-terms').value, privacy: document.getElementById('pol-priv').value, refund: document.getElementById('pol-ref').value, about: document.getElementById('pol-about').value };
   if (type === 'app')      d = { url: document.getElementById('app-url').value };
@@ -1337,6 +1342,7 @@ function initData() {
       document.getElementById('b-hero').value  = v.brand.heroImageUrl  || '';
       document.getElementById('b-fav').value   = v.brand.faviconUrl    || '';
       if (v.brand.headerLogoUrl) { const p = document.getElementById('p-hlogo'); p.src = v.brand.headerLogoUrl; p.style.display = 'block'; }
+      if (v.brand.sideLogoUrl)   { document.getElementById('b-slogo').value = v.brand.sideLogoUrl; const p = document.getElementById('p-slogo'); p.src = v.brand.sideLogoUrl; p.style.display = 'block'; }
       if (v.brand.heroImageUrl)  { const p = document.getElementById('p-hero');  p.src = v.brand.heroImageUrl;  p.style.display = 'block'; }
     }
     if (v.contact) {
