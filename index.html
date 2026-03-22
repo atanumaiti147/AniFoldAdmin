@@ -369,6 +369,31 @@ label{display:block;font-size:.72rem;color:var(--mt);font-weight:700;text-transf
       <button class="btn btn-g" id="btn-pay" onclick="savePayment()"><div class="ldr"></div><span class="bt">💾 SAVE PAYMENT SETTINGS</span></button>
     </div>
 
+    <!-- TELEGRAM BOT SETTINGS -->
+<div class="card" style="border-color:#2aabee;margin-bottom:14px;">
+  <h4 style="color:#2aabee;margin-bottom:4px;">✈️ TELEGRAM BOT</h4>
+  <p style="font-size:.78rem;color:var(--mt);margin-bottom:12px;">Admin ko har naye order ka notification milega. User apna download link bhi Telegram pe pa sakta hai.</p>
+  <div class="ib" style="border-color:#2aabee;margin-bottom:12px;">
+    <b>Setup kaise kare:</b><br>
+    1. Telegram → <b>@BotFather</b> → /newbot → Token copy karo<br>
+    2. Bot ko message karo → getUpdates se Chat ID nikalo<br>
+    3. Webhook browser mein open karo:<br>
+    &nbsp;&nbsp;<code style="color:#2aabee;font-size:.75rem;">https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://craftyam.anifold.shop/telegram_bot.php</code><br>
+    4. Neeche save karo. Bas!
+  </div>
+  <div class="g2">
+    <div><label>Bot Token</label><input type="text" id="tg-token" placeholder="1234567890:ABCdef..."></div>
+    <div><label>Admin Chat ID</label><input type="text" id="tg-chat-id" placeholder="Numeric ID"></div>
+  </div>
+  <label>Bot Username (without @)</label>
+  <input type="text" id="tg-username" placeholder="YourBotName">
+  <div class="g2" style="margin-top:5px;">
+    <button class="btn" id="btn-tg" style="background:#2aabee;color:#fff;" onclick="saveTelegram()"><div class="ldr"></div><span class="bt">💾 SAVE TELEGRAM</span></button>
+    <button class="btn btn-gh" onclick="testTelegram()"><span class="bt">🔔 SEND TEST MESSAGE</span></button>
+  </div>
+  <div id="tg-status" style="font-size:.76rem;color:var(--mt);margin-top:6px;"></div>
+</div>
+
     <!-- CLOUDINARY -->
     <div class="card" id="cld-card" style="border-color:var(--o);">
       <h4 style="color:var(--o);margin-bottom:4px;">☁️ CLOUDINARY (Image Upload)</h4>
@@ -495,6 +520,59 @@ label{display:block;font-size:.72rem;color:var(--mt);font-weight:700;text-transf
 </div><!-- /wrap -->
 
 <script>
+
+
+// ================================================================
+// TELEGRAM BOT FUNCTIONS
+// ================================================================
+window.saveTelegram = function() {
+  var token  = document.getElementById('tg-token').value.trim();
+  var chatId = document.getElementById('tg-chat-id').value.trim();
+  var uname  = document.getElementById('tg-username').value.trim();
+  if (!token || !chatId) { toast('Bot Token aur Chat ID required hai', 'e'); return; }
+  btnLoad('btn-tg', true);
+  db.ref('meta/telegram').set({ botToken: token, adminChatId: chatId, botUsername: uname })
+    .then(function() {
+      document.getElementById('tg-status').innerHTML = '<span style="color:var(--g)">✅ Saved! Bot ready.</span>';
+      toast('Telegram settings saved ✅', 's');
+    })
+    .catch(function(er) { toast(er.message, 'e'); })
+    .finally(function() { btnLoad('btn-tg', false); });
+};
+
+window.testTelegram = async function() {
+  var ok = await sendAdminTelegram('✅ Test message from AniFold Admin!\n\nTelegram bot is working correctly 🎉');
+  if (ok) toast('Test message sent! Check your Telegram ✈️', 's');
+  else    toast('Failed! Check Bot Token aur Chat ID.', 'e');
+};
+
+async function sendAdminTelegram(text) {
+  try {
+    var snap = await db.ref('meta/telegram').once('value');
+    var tg = snap.val();
+    if (!tg || !tg.botToken || !tg.adminChatId) return false;
+    var res = await fetch('https://api.telegram.org/bot' + tg.botToken + '/sendMessage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: tg.adminChatId, text: text, parse_mode: 'HTML' })
+    });
+    var d = await res.json();
+    return d.ok;
+  } catch(e) { return false; }
+}
+
+function prefillTelegram() {
+  db.ref('meta/telegram').once('value').then(function(s) {
+    if (!s.exists()) return;
+    var v = s.val();
+    if (v.botToken)    document.getElementById('tg-token').value    = v.botToken;
+    if (v.adminChatId) document.getElementById('tg-chat-id').value  = v.adminChatId;
+    if (v.botUsername) document.getElementById('tg-username').value = v.botUsername;
+    if (v.botToken && v.adminChatId)
+      document.getElementById('tg-status').innerHTML = '<span style="color:var(--g)">✅ Configured. Bot: @' + (v.botUsername || '—') + '</span>';
+  });
+}
+
 // ================================================================
 // FIREBASE INIT
 // ================================================================
@@ -1310,7 +1388,17 @@ function initData() {
       const dot = document.getElementById('ndot'); dot.style.display = 'block';
       toast('🛒 NEW ORDER: ' + (o.item || 'Product') + ' — ₹' + (o.price || 0), 'i');
       setTimeout(function() { dot.style.display = 'none'; }, 15000);
-    }
+    };
+
+  // Telegram Admin Notification
+      sendAdminTelegram(
+        '🛒 <b>NEW ORDER RECEIVED!</b>\n\n' +
+        '📦 ' + (o.item || 'Product') + '\n' +
+        '💰 ₹' + (o.price || 0) + '\n' +
+        '📧 ' + (o.email || '—') + '\n' +
+        '🆔 ' + (o.paymentId || '—') + '\n' +
+        '⏰ ' + new Date().toLocaleString('en-IN')
+      )
   });
 
   // Users listener
@@ -1429,6 +1517,7 @@ function initData() {
       document.getElementById('pol-about').value = v.policies.about   || '';
     }
     if (v.app) document.getElementById('app-url').value = v.app.url || '';
+    prefillTelegram();   // ← YEH ADD KARO
   });
 }
 </script>
