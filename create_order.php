@@ -58,8 +58,8 @@ $CLOUDINARY_SECRET = "Ih_dYF98_M8wSL0BihhTrQTTTcI";
 //         → Chat ID copy karo
 // Step 3: Neeche dono paste karo
 // ====================================================
-$TELEGRAM_BOT_TOKEN     = "YAHAN_APNA_BOT_TOKEN_DAALO";   // e.g. "7123456789:AAFxxx..."
-$TELEGRAM_ADMIN_CHAT_ID = "YAHAN_APNA_CHAT_ID_DAALO";     // e.g. "987654321"
+$TELEGRAM_BOT_TOKEN     = "8785884992:AAHKpqp7COoBUAoSBEiPbOxL9m7ywSX3Xuo";   // e.g. "7123456789:AAFxxx..."
+$TELEGRAM_ADMIN_CHAT_ID = "7058367190";     // e.g. "987654321"
 
 // Cron job ke liye secret (koi bhi string rakh sakte ho)
 $CRON_SECRET = "anifold_cron_secret_2025";
