@@ -520,11 +520,13 @@ function saveCloudinary() {
   CLD = n; CPRE = p;
   localStorage.setItem('cld_n', n); localStorage.setItem('cld_p', p);
   document.getElementById('cld-status').innerHTML = '<span style="color:var(--g)">✅ Active: <b>' + n + '</b> / ' + p + '</span>';
-  toast('Cloudinary config saved! Try uploading an image.', 's');
+  toast('Cloudinary saved ✅ — you can now upload images!', 's');
 }
 
 async function cloudUp(file, folder) {
   folder = folder || 'anifold';
+  // Re-check localStorage right before upload (in case it was set after page load)
+  if (!CLD || !CPRE) { loadCld(); }
   if (!CLD || !CPRE) throw new Error('Set Cloudinary config in Settings → Cloudinary first!');
   const fd = new FormData();
   fd.append('file', file); fd.append('upload_preset', CPRE); fd.append('folder', folder);
@@ -591,9 +593,15 @@ auth.onAuthStateChanged(function(u) {
     document.getElementById('dash').classList.remove('hidden');
     document.getElementById('ae').textContent = 'Logged in: ' + u.email;
     // Prefill Cloudinary
+    // Reload Cloudinary config fresh from localStorage
+    loadCld();
     if (CLD) document.getElementById('cld-name').value = CLD;
     if (CPRE) document.getElementById('cld-preset').value = CPRE;
-    if (CLD && CPRE) document.getElementById('cld-status').innerHTML = '<span style="color:var(--g)">✅ Active: <b>' + CLD + '</b> / ' + CPRE + '</span>';
+    if (CLD && CPRE) {
+      document.getElementById('cld-status').innerHTML = '<span style="color:var(--g)">✅ Active: <b>' + CLD + '</b> / ' + CPRE + '</span>';
+    } else {
+      document.getElementById('cld-status').innerHTML = '<span style="color:var(--r)">⚠️ Not configured — go to Settings → Cloudinary section</span>';
+    }
     initData();
     loadFlashStatus();
     loadNotifData();
@@ -654,7 +662,7 @@ window.uploadProdImg = async function(input) {
   } catch(er) { toast('Upload failed: ' + er.message, 'e'); }
   box.textContent = '📸 Click to Upload Image';
   box.style.pointerEvents = 'auto';
-  input.value = '';
+  input.value = ''; // Reset so same file can be re-selected
 };
 
 function renderPImgs() {
@@ -1338,11 +1346,27 @@ function initData() {
     }
     if (v.brand) {
       document.getElementById('b-name').value  = v.brand.name         || '';
-      document.getElementById('b-hlogo').value = v.brand.headerLogoUrl || '';
+      {
+        const _DEFS = [
+          'https://res.cloudinary.com/di1mnrg0l/image/upload/v1774128852/Picsart-26-01-02-20-57-17-409_kzckpu.png',
+          'https://res.cloudinary.com/di1mnrg0l/image/upload/v1774133808/Picsart-26-01-02-20-57-06-204_sidqa7.png'
+        ];
+        const logoVal = v.brand.headerLogoUrl || '';
+        document.getElementById('b-hlogo').value = _DEFS.includes(logoVal) ? '' : logoVal;
+      }
       document.getElementById('b-hero').value  = v.brand.heroImageUrl  || '';
       document.getElementById('b-fav').value   = v.brand.faviconUrl    || '';
       if (v.brand.headerLogoUrl) { const p = document.getElementById('p-hlogo'); p.src = v.brand.headerLogoUrl; p.style.display = 'block'; }
-      if (v.brand.sideLogoUrl)   { document.getElementById('b-slogo').value = v.brand.sideLogoUrl; const p = document.getElementById('p-slogo'); p.src = v.brand.sideLogoUrl; p.style.display = 'block'; }
+      if (v.brand.sideLogoUrl) {
+        const _DEFS = [
+          'https://res.cloudinary.com/di1mnrg0l/image/upload/v1774128852/Picsart-26-01-02-20-57-17-409_kzckpu.png',
+          'https://res.cloudinary.com/di1mnrg0l/image/upload/v1774133808/Picsart-26-01-02-20-57-06-204_sidqa7.png'
+        ];
+        if(!_DEFS.includes(v.brand.sideLogoUrl)) {
+          document.getElementById('b-slogo').value = v.brand.sideLogoUrl;
+          const p = document.getElementById('p-slogo'); p.src = v.brand.sideLogoUrl; p.style.display = 'block';
+        }
+      }
       if (v.brand.heroImageUrl)  { const p = document.getElementById('p-hero');  p.src = v.brand.heroImageUrl;  p.style.display = 'block'; }
     }
     if (v.contact) {
