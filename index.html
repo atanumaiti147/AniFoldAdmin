@@ -1232,19 +1232,52 @@ function loadNotifData(){
     });
   });
 }
+
 window.sendNotif=function(){
   const title=document.getElementById('n-title').value.trim();
   const body=document.getElementById('n-body').value.trim();
-  if(!title||!body){toast('Title and message are required','e');return;}
+  if(!title||!body){toast('Title and message required','e');return;}
   btnLoad('btn-notif',true);
-  const data={title,body,url:document.getElementById('n-url').value||'https://anifold.shop',icon:document.getElementById('n-icon').value||'',sentAt:Date.now()};
-  db.ref('notifications').push(data).then(()=>{
-    db.ref('meta/latestNotification').set(data);
-    toast('Notification sent! 📢','i');
-    document.getElementById('n-title').value='';
-    document.getElementById('n-body').value='';
-    loadNotifData();
-  }).catch(er=>toast(er.message,'e')).finally(()=>btnLoad('btn-notif',false));
+
+  const ONESIGNAL_APP_ID='916761ee-cb9f-420f-9027-b43ab86a0f62';
+  const ONESIGNAL_REST_KEY='os_v2_app_sftwd3wlt5ba7ebhwq5lq2qpminhhyjnavtunuuhwryk6nem6xjm6jj6a5behc2rurjql4a6ogdupeobgfa2rywgh3tzaluvpo3es7q';
+
+  const notifData={
+    title,body,
+    url:document.getElementById('n-url').value||'https://anifold.shop',
+    icon:document.getElementById('n-icon').value||'https://res.cloudinary.com/di1mnrg0l/image/upload/v1774128852/Picsart-26-01-02-20-57-17-409_kzckpu.png',
+    sentAt:Date.now()
+  };
+
+  // OneSignal se push bhejo (browser band ho tab bhi kaam karta hai)
+  fetch('https://onesignal.com/api/v1/notifications',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Basic '+ONESIGNAL_REST_KEY},
+    body:JSON.stringify({
+      app_id:ONESIGNAL_APP_ID,
+      included_segments:['All'],
+      headings:{en:title},
+      contents:{en:body},
+      url:notifData.url,
+      chrome_web_icon:notifData.icon,
+      firefox_icon:notifData.icon,
+    })
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    if(d.id){
+      toast('📢 Sent! Recipients: '+(d.recipients||0),'s');
+      db.ref('notifications').push(notifData);
+      db.ref('meta/latestNotification').set(notifData);
+      document.getElementById('n-title').value='';
+      document.getElementById('n-body').value='';
+      loadNotifData();
+    }else{
+      toast('Error: '+JSON.stringify(d.errors||d),'e');
+    }
+  })
+  .catch(e=>toast('Failed: '+e.message,'e'))
+  .finally(()=>btnLoad('btn-notif',false));
 };
 
 // ================================================================
