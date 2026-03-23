@@ -1223,15 +1223,46 @@ function loadNotifData(){
     const count=s.exists()?Object.keys(s.val()).length:0;
     document.getElementById('sub-count').textContent=count>0?'📱 '+count+' subscriber'+(count!==1?'s':'')+' will receive this':'No subscribers yet.';
   });
-  db.ref('notifications').limitToLast(10).once('value').then(s=>{
+  db.ref('notifications').limitToLast(20).once('value').then(s=>{
     const l=document.getElementById('l-notif');l.innerHTML='';
     if(!s.exists()){l.innerHTML='<div style="color:var(--mt2);font-size:.78rem;">No notifications sent yet.</div>';return;}
     const items=[];s.forEach(c=>items.push(Object.assign({},c.val(),{key:c.key})));
     items.reverse().forEach(n=>{
-      l.innerHTML+='<div class="ni"><b style="font-size:.88rem;">'+(n.title||'')+'</b><div style="font-size:.8rem;color:rgba(255,255,255,.7);margin-top:3px;">'+(n.body||'')+'</div><div style="font-size:.68rem;color:#444;margin-top:5px;">'+new Date(n.sentAt||0).toLocaleString()+'</div></div>';
+      l.innerHTML+='<div class="ni" style="position:relative;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:start;gap:8px;">' +
+          '<div style="flex:1;min-width:0;">' +
+            '<b style="font-size:.88rem;">'+(n.title||'')+'</b>' +
+            '<div style="font-size:.8rem;color:rgba(255,255,255,.7);margin-top:3px;">'+(n.body||'')+'</div>' +
+            (n.url?'<div style="font-size:.68rem;color:var(--c);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🔗 '+(n.url||'')+'</div>':'') +
+            '<div style="font-size:.68rem;color:#444;margin-top:5px;">'+new Date(n.sentAt||0).toLocaleString()+'</div>' +
+          '</div>' +
+          '<div class="arow" style="flex-shrink:0;">' +
+            '<button class="btn btn-o btn-sm" onclick="resendNotif(\''+n.key+'\')">🔁 Resend</button>' +
+            '<button class="btn btn-r btn-sm" onclick="delNotif(\''+n.key+'\')">🗑️</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
     });
   });
 }
+
+window.delNotif=function(key){
+  if(!confirm('Delete this notification?'))return;
+  db.ref('notifications/'+key).remove().then(()=>{toast('Deleted','s');loadNotifData();});
+};
+
+window.resendNotif=function(key){
+  db.ref('notifications/'+key).once('value').then(s=>{
+    if(!s.exists())return;
+    const n=s.val();
+    document.getElementById('n-title').value=n.title||'';
+    document.getElementById('n-body').value=n.body||'';
+    document.getElementById('n-url').value=n.url||'https://anifold.shop';
+    document.getElementById('n-icon').value=n.icon||'';
+    window.scrollTo(0,0);
+    toast('Data loaded — click Send to resend 📢','i');
+  });
+};
 window.sendNotif=function(){
   const title=document.getElementById('n-title').value.trim();
   const body=document.getElementById('n-body').value.trim();
